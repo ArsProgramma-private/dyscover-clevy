@@ -12,6 +12,7 @@
 #pragma package(smart_init)
 #endif
 
+#ifndef __NO_PORTAUDIO__
 Audio::Audio() : m_pStream(nullptr)
 {
 	Pa_Initialize();
@@ -20,7 +21,6 @@ Audio::Audio() : m_pStream(nullptr)
 Audio::~Audio()
 {
 	Close();
-
 	Pa_Terminate();
 }
 
@@ -31,7 +31,6 @@ bool Audio::Open(int channels, int samplerate, PaSampleFormat sampleformat)
 	{
 		return false;
 	}
-
 	error = Pa_StartStream(m_pStream);
 	return error == paNoError;
 }
@@ -39,20 +38,32 @@ bool Audio::Open(int channels, int samplerate, PaSampleFormat sampleformat)
 void Audio::Close()
 {
 	Stop();
-
-	Pa_CloseStream(m_pStream);
+	if (m_pStream) {
+		Pa_CloseStream(m_pStream);
+		m_pStream = nullptr;
+	}
 }
 
 bool Audio::Write(const void* audiodata, unsigned long audiodatalen)
 {
+	if (!m_pStream) return false;
 	PaError error = Pa_WriteStream(m_pStream, audiodata, audiodatalen);
-
 	return error == paNoError;
 }
 
 void Audio::Stop()
 {
+	if (!m_pStream) return;
 	Pa_AbortStream(m_pStream);
 	Pa_Sleep(100);
 	Pa_StartStream(m_pStream);
 }
+#else
+// Stub implementations when PortAudio is disabled.
+Audio::Audio() {}
+Audio::~Audio() {}
+bool Audio::Open(int, int, PaSampleFormat) { return false; }
+void Audio::Close() {}
+bool Audio::Write(const void*, unsigned long) { return false; }
+void Audio::Stop() {}
+#endif

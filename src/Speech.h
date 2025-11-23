@@ -7,11 +7,14 @@
 #include <string>
 #include <thread>
 
+#ifndef __NO_TTS__
 #include <librstts.h>
+#endif
 
 #include "Audio.h"
 #include "Queue.h"
 
+#ifndef __NO_TTS__
 class Speech
 {
 public:
@@ -41,3 +44,20 @@ private:
 
 	static void TTSAudioCallback(RSTTSInst, const void*, size_t, void*);
 };
+#else
+// Stubbed Speech implementation when librstts is disabled.
+class Speech
+{
+public:
+	Speech() {}
+	~Speech() {}
+	bool Init(const char*, const char*, const char*) { return false; }
+	void Term() {}
+	float GetSpeed() { return -1.0f; }
+	bool SetSpeed(float) { return false; }
+	float GetVolume() { return -1.0f; }
+	bool SetVolume(float) { return false; }
+	void Speak(std::string) {}
+	void Stop() {}
+};
+#endif

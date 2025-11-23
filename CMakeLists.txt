@@ -107,23 +107,24 @@ if(WIN32)
     find_package(PortAudio REQUIRED)
   else()
     message(STATUS "Skipping PortAudio support (BUILD_WITH_PORTAUDIO=OFF)")
+    target_compile_definitions(Dyscover PRIVATE __NO_PORTAUDIO__)
   endif()
-  # FindPortAudio provides PORTAUDIO_LIBRARIES / PORTAUDIO_INCLUDE_DIR
   if(PORTAUDIO_INCLUDE_DIR)
     target_include_directories(Dyscover PRIVATE ${PORTAUDIO_INCLUDE_DIR})
   endif()
-  if(PORTAUDIO_LIBRARIES)
-  target_link_libraries(Dyscover PRIVATE ${PORTAUDIO_LIBRARIES})
-  else()
-    # Fallback if variable name differs (rare), but only if PortAudio was found
-    if(PortAudio_FOUND OR PORTAUDIO_FOUND)
-      target_link_libraries(Dyscover PRIVATE portaudio)
+  if(BUILD_WITH_PORTAUDIO)
+    if(PORTAUDIO_LIBRARIES)
+      target_link_libraries(Dyscover PRIVATE ${PORTAUDIO_LIBRARIES})
     else()
-      message(FATAL_ERROR "PortAudio not found: cannot link Dyscover with PortAudio. Please ensure PortAudio is installed and CMake can find it.")
+      if(PortAudio_FOUND OR PORTAUDIO_FOUND)
+        target_link_libraries(Dyscover PRIVATE portaudio)
+      else()
+        message(FATAL_ERROR "PortAudio not found: cannot link Dyscover with PortAudio. Please ensure PortAudio is installed and CMake can find it.")
+      endif()
     endif()
   endif()
 else()
-  find_package(PkgConfig) # Optional, emit clear error if missing
+  find_package(PkgConfig)
   if(PKG_CONFIG_FOUND)
     if(BUILD_WITH_PORTAUDIO)
       pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
@@ -131,10 +132,11 @@ else()
     pkg_check_modules(UDEV REQUIRED libudev)
     if(BUILD_WITH_PORTAUDIO)
       target_include_directories(Dyscover PRIVATE ${PORTAUDIO_INCLUDE_DIRS} ${UDEV_INCLUDE_DIRS})
-        target_link_libraries(Dyscover PRIVATE ${PORTAUDIO_LIBRARIES} ${UDEV_LIBRARIES})
+      target_link_libraries(Dyscover PRIVATE ${PORTAUDIO_LIBRARIES} ${UDEV_LIBRARIES})
     else()
       target_include_directories(Dyscover PRIVATE ${UDEV_INCLUDE_DIRS})
       target_link_libraries(Dyscover PRIVATE ${UDEV_LIBRARIES})
+      target_compile_definitions(Dyscover PRIVATE __NO_PORTAUDIO__)
     endif()
   else()
     message(FATAL_ERROR "pkg-config not found; install it (e.g. apt install pkg-config) to build on UNIX.")
@@ -166,24 +168,16 @@ if(WIN32)
     )
 
     if(BUILD_WITH_LIBRSTTS)
-      # Link .exe with generated .lib
       target_sources(Dyscover PRIVATE ${LIBRSTTS_LIB_FILE})
       target_link_libraries(Dyscover PRIVATE ${LIBRSTTS_LIB_FILE})
-    else()
-      message(STATUS "Skipping linking of librstts (BUILD_WITH_LIBRSTTS=OFF)")
-    endif()
-
-    if(BUILD_WITH_LIBRSTTS)
-      # Copy .dll file to the folder where .exe is
       add_custom_command(
-          TARGET Dyscover POST_BUILD
-          COMMAND ${CMAKE_COMMAND} -E copy ${LIBRSTTS_DLL_FILE} $<TARGET_FILE_DIR:Dyscover>
-      )
-    endif()
-    add_custom_command(
         TARGET Dyscover POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${LIBRSTTS_DLL_FILE} $<TARGET_FILE_DIR:Dyscover>
-    )
+      )
+    else()
+      message(STATUS "Skipping linking of librstts (BUILD_WITH_LIBRSTTS=OFF)")
+      target_compile_definitions(Dyscover PRIVATE __NO_TTS__)
+    endif()
 
     # Copy data files
     add_custom_command(
@@ -224,6 +218,7 @@ else()
       endif()
     else()
       message(STATUS "Skipping linking to librstts on UNIX (BUILD_WITH_LIBRSTTS=OFF)")
+      target_compile_definitions(Dyscover PRIVATE __NO_TTS__)
     endif()
 endif()
 

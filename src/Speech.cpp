@@ -35,151 +35,105 @@ static const char kLicense[] = "<?xml version=\"1.0\"?>\
 	<signature id=\"6711250ff810fa1b50fa806f607ecbd66fee09195d42b52727938855daf579f761ae0acad579ffd5fb694c281b2a3665196abf8e1a74d08cfd8474bcd96cd2ec\"/>\
 </license>";
 
-Speech::Speech() : m_rstts(nullptr), m_quit(false)
-{
-}
-
-Speech::~Speech()
-{
-	Term();
-}
+#ifndef __NO_TTS__
+Speech::Speech() : m_rstts(nullptr), m_quit(false) {}
+Speech::~Speech() { Term(); }
 
 bool Speech::Init(const char* basedir, const char* lang, const char* voice)
 {
-	m_rstts = rsttsInit(basedir);
-	if (m_rstts == nullptr) return false;
+    m_rstts = rsttsInit(basedir);
+    if (m_rstts == nullptr) return false;
 
-	int result = rsttsSetParameter(m_rstts, RSTTS_PARAM_LICENSE_BUFFER, RSTTS_TYPE_STRING, kLicense);
-	if (RSTTS_ERROR(result))
-	{
-		Term();
-		return false;
-	}
+    int result = rsttsSetParameter(m_rstts, RSTTS_PARAM_LICENSE_BUFFER, RSTTS_TYPE_STRING, kLicense);
+    if (RSTTS_ERROR(result)) { Term(); return false; }
 
-	const int responsiveness = RSTTS_RESPONSIVENESS_FAST;
-	result = rsttsSetParameter(m_rstts, RSTTS_PARAM_RESPONSIVENESS_SETTING, RSTTS_TYPE_INT, &responsiveness);
-	if (RSTTS_ERROR(result))
-	{
-		Term();
-		return false;
-	}
+    const int responsiveness = RSTTS_RESPONSIVENESS_FAST;
+    result = rsttsSetParameter(m_rstts, RSTTS_PARAM_RESPONSIVENESS_SETTING, RSTTS_TYPE_INT, &responsiveness);
+    if (RSTTS_ERROR(result)) { Term(); return false; }
 
-	result = rsttsSetSampleRate(m_rstts, kSampleRate);
-	if (RSTTS_ERROR(result))
-	{
-		Term();
-		return false;
-	}
+    result = rsttsSetSampleRate(m_rstts, kSampleRate);
+    if (RSTTS_ERROR(result)) { Term(); return false; }
 
-	result = rsttsSetLanguage(m_rstts, lang);
-	if (RSTTS_ERROR(result))
-	{
-		Term();
-		return false;
-	}
+    result = rsttsSetLanguage(m_rstts, lang);
+    if (RSTTS_ERROR(result)) { Term(); return false; }
 
-	result = rsttsSetVoiceByName(m_rstts, voice);
-	if (RSTTS_ERROR(result))
-	{
-		Term();
-		return false;
-	}
+    result = rsttsSetVoiceByName(m_rstts, voice);
+    if (RSTTS_ERROR(result)) { Term(); return false; }
 
-	result = rsttsSetAudioCallback(m_rstts, TTSAudioCallback, this);
-	if (RSTTS_ERROR(result))
-	{
-		Term();
-		return false;
-	}
+    result = rsttsSetAudioCallback(m_rstts, TTSAudioCallback, this);
+    if (RSTTS_ERROR(result)) { Term(); return false; }
 
-	if (!m_audio.Open(kChannels, kSampleRate, paInt16))
-	{
-		Term();
-		return false;
-	}
+    if (!m_audio.Open(kChannels, kSampleRate, paInt16)) { Term(); return false; }
 
-	m_thread = std::thread(&Speech::ThreadProc, this);
-
-	return true;
+    m_thread = std::thread(&Speech::ThreadProc, this);
+    return true;
 }
 
 void Speech::Term()
 {
-	if (m_thread.joinable())
-	{
-		// Request thread to exit.
-		m_quit = true;
-		m_queue.Enqueue("");
-
-		// Wait for thread to exit.
-		m_thread.join();
-	}
-
-	m_audio.Close();
-
-	if (m_rstts != nullptr)
-	{
-		rsttsFree(m_rstts);
-		m_rstts = nullptr;
-	}
+    if (m_thread.joinable()) {
+        m_quit = true;
+        m_queue.Enqueue("");
+        m_thread.join();
+    }
+    m_audio.Close();
+    if (m_rstts != nullptr) {
+        rsttsFree(m_rstts);
+        m_rstts = nullptr;
+    }
 }
 
 float Speech::GetSpeed()
 {
-	float speed = -1.0f;
-	int result = rsttsGetSpeed(m_rstts, &speed);
-	return RSTTS_SUCCESS(result) ? speed : -1.0f;
+    float speed = -1.0f;
+    int result = rsttsGetSpeed(m_rstts, &speed);
+    return RSTTS_SUCCESS(result) ? speed : -1.0f;
 }
 
 bool Speech::SetSpeed(float value)
 {
-	int result = rsttsSetSpeed(m_rstts, static_cast<float>(RSTTS_SPEED_DEFAULT) + value);
-	return RSTTS_SUCCESS(result);
+    int result = rsttsSetSpeed(m_rstts, static_cast<float>(RSTTS_SPEED_DEFAULT) + value);
+    return RSTTS_SUCCESS(result);
 }
 
 float Speech::GetVolume()
 {
-	float volume = -1.0f;
-	int result = rsttsGetVolume(m_rstts, &volume);
-	return RSTTS_SUCCESS(result) ? volume : -1.0f;
+    float volume = -1.0f;
+    int result = rsttsGetVolume(m_rstts, &volume);
+    return RSTTS_SUCCESS(result) ? volume : -1.0f;
 }
 
 bool Speech::SetVolume(float value)
 {
-	int result = rsttsSetVolume(m_rstts, value);
-	return RSTTS_SUCCESS(result);
+    int result = rsttsSetVolume(m_rstts, value);
+    return RSTTS_SUCCESS(result);
 }
 
 void Speech::Speak(std::string text)
 {
-	m_queue.Enqueue(text);
+    m_queue.Enqueue(text);
 }
 
 void Speech::Stop()
 {
-	// Stop TTS engine.
-	if (m_rstts != nullptr)
-	{
-		rsttsStop(m_rstts);
-	}
-
-	// Stop any playing audio.
-	m_audio.Stop();
+    if (m_rstts != nullptr) {
+        rsttsStop(m_rstts);
+    }
+    m_audio.Stop();
 }
 
 void Speech::ThreadProc()
 {
-	while (!m_quit)
-	{
-		std::string text = m_queue.Dequeue();
-		rsttsSynthesize(m_rstts, text.c_str(), "text");
-	}
+    while (!m_quit) {
+        std::string text = m_queue.Dequeue();
+        rsttsSynthesize(m_rstts, text.c_str(), "text");
+    }
 }
 
 void Speech::TTSAudioCallback(RSTTSInst inst, const void* audiodata, size_t audiodatalen, void* userptr)
 {
-	(void)inst;
-
-	Speech* pThis = (Speech*)userptr;
-	pThis->m_audio.Write(audiodata, static_cast<unsigned long>(audiodatalen / kSampleSize));
+    (void)inst;
+    Speech* pThis = (Speech*)userptr;
+    pThis->m_audio.Write(audiodata, static_cast<unsigned long>(audiodatalen / kSampleSize));
 }
+#endif

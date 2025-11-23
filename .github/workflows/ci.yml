@@ -20,7 +20,6 @@ jobs:
           key: ${{ runner.os }}-ccache-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
           restore-keys: |
             ${{ runner.os }}-ccache-
-          retention-days: 14
 
       - name: Cache build dir
         uses: actions/cache@v4
@@ -29,7 +28,6 @@ jobs:
           key: ${{ runner.os }}-build-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
           restore-keys: |
             ${{ runner.os }}-build-
-          retention-days: 14
 
       - name: Install packages
         run: |
@@ -66,7 +64,6 @@ jobs:
           key: ${{ runner.os }}-ccache-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
           restore-keys: |
             ${{ runner.os }}-ccache-
-          retention-days: 14
 
       - name: Cache build directory
         uses: actions/cache@v4
@@ -75,7 +72,6 @@ jobs:
           key: ${{ runner.os }}-build-full-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
           restore-keys: |
             ${{ runner.os }}-build-full-
-          retention-days: 14
 
       - uses: actions/checkout@v4
 
@@ -117,7 +113,6 @@ jobs:
           key: macos-ccache-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
           restore-keys: |
             macos-ccache-
-          retention-days: 14
 
       - name: Configure (C++17)
         env:
@@ -238,7 +233,6 @@ jobs:
             key: macos-build-full-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
             restore-keys: |
               macos-build-full-
-            retention-days: 14
 
         - name: Configure (C++17 — full build)
           env:
