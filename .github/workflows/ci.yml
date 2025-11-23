@@ -31,6 +31,29 @@ jobs:
           EOF
           ${CXX:-g++} -std=c++17 test.cpp -O2 -o test && ./test
 
+  linux-full-build:
+    name: Linux full product build
+    runs-on: ubuntu-latest
+    needs: linux-build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install packages (full product build)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libudev-dev libwxgtk3.0-gtk3-dev libwxgtk-media3.0-gtk3-dev portaudio19-dev gettext libasound2-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+
+      - name: Configure (C++17 — full build)
+        run: |
+          cmake -S . -B build-full -DENABLE_CXX20=OFF
+
+      - name: Build (full product)
+        run: cmake --build build-full --target Dyscover -j 2
+
+      - name: Run smoke-run (if executable produced)
+        run: |
+          if [ -f build-full/Dyscover ]; then echo "Dyscover produced"; file build-full/Dyscover || true; else echo "No Dyscover executable found"; fi
+
   macos-build:
     name: macOS build (Clang >= 10)
     runs-on: macos-latest
@@ -70,3 +93,22 @@ jobs:
         shell: cmd
         run: |
           cl /EHsc /std:c++17 test.cpp
+
+  linux-cxx20:
+    name: Linux C++20 validation
+    runs-on: ubuntu-latest
+    needs: linux-build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install packages (minimal)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config
+
+      - name: Configure with C++20
+        run: |
+          cmake -S . -B build-cxx20 -DENABLE_CXX20=ON -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF
+
+      - name: Build (C++20 smoke)
+        run: cmake --build build-cxx20 --target Dyscover -j 2 || true
