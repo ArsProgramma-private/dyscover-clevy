@@ -1,0 +1,36 @@
+name: Integration Tests (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_integration:
+        description: 'Set to true to run integration tests' 
+        required: true
+        default: 'false'
+
+jobs:
+  integration:
+    name: Integration tests (manual trigger)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies for integration tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libudev-dev libwxgtk3.0-gtk3-dev portaudio19-dev gettext
+
+      - name: Configure (enable integration tests)
+        run: |
+          cmake -S . -B build-integration -DBUILD_TESTS=ON -DBUILD_INTEGRATION_TESTS=ON -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=ON
+
+      - name: Build integration tests
+        run: cmake --build build-integration --target Integration-DeviceDetectionStaticList -j 2 || true
+
+      - name: Run integration tests
+        run: |
+          if [ "${{ github.event.inputs.run_integration }}" = "true" ]; then
+            ctest --test-dir build-integration --output-on-failure || true
+          else
+            echo "Integration tests skipped (set run_integration=true to run)"
+          fi

@@ -1,0 +1,21 @@
+name-template: "${nextRelease.version} — ${nextRelease.date}"
+change-template: "- ${change.description} (@${change.pr.user.login})"
+categories:
+  - title: "Added"
+    labels:
+      - feature
+  - title: "Changed"
+    labels:
+      - enhancement
+  - title: "Fixed"
+    labels:
+      - bug
+  - title: "ABI/Packaging"
+    labels:
+      - abi-impact
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  **Notes**: Be sure to check docs/ABI_MIGRATION.md for any ABI-impacting changes.
