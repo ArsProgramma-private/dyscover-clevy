@@ -26,11 +26,11 @@ inline std::string NormalizeHex4(const std::string& in)
 {
     std::string s = in;
     // Trim whitespace
-    s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
+    s.erase(std::remove_if(s.begin(), s.end(), [](unsigned char c){ return ::isspace(c); }), s.end());
     // Uppercase
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return static_cast<char>(::toupper(c)); });
     // Pad or truncate to 4
-    if (s.size() < 4) s.insert(0, 4 - s.size(), '0');
+    if (s.size() < 4) s = std::string(4 - s.size(), '0') + s;
     if (s.size() > 4) s = s.substr(0,4);
     return s;
 }

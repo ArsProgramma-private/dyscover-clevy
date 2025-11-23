@@ -166,7 +166,6 @@ jobs:
           key: ${{ runner.os }}-ccache-cxx20-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
           restore-keys: |
             ${{ runner.os }}-ccache-
-          retention-days: 14
 
       - name: Install packages (minimal)
         run: |
@@ -199,7 +198,6 @@ jobs:
           key: ${{ runner.os }}-ccache-tests-${{ hashFiles('**/CMakeLists.txt','**/tests/**') }}
           restore-keys: |
             ${{ runner.os }}-ccache-
-          retention-days: 14
 
       - name: Install minimal packages for tests
         run: |
@@ -273,7 +271,6 @@ jobs:
             key: windows-build-full-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
             restore-keys: |
               windows-build-full-
-            retention-days: 14
 
         - name: Build (full product)
           shell: powershell
