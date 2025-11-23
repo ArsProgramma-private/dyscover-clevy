@@ -36,6 +36,48 @@ To speed up CI runs and reduce cross-run build time, our GitHub Actions workflow
 
 If you operate self-hosted runners, consider configuring a persistent ccache directory and a clean caching policy suitable for your runners.
 
+Cache tuning in CI
+------------------
+
+The CI cache keys are tuned to include both top-level `CMakeLists.txt` and source directory contents where possible, and cache entries use a short retention window (14 days) so that caches don't grow without bound. The workflows also use restore-keys to allow fallbacks when exact cache keys are not found. This improves cache hit rates and reduces rebuild time across small changes while keeping cache storage manageable.
+
+Self-hosted runners: persistent ccache (recommended)
+--------------------------------------------------
+
+If you run these workflows on a self-hosted runner (especially for integration/hardware runs), it's recommended to configure a persistent ccache directory to improve build performance across jobs. Below is a minimal example that configures a shared cache at `/var/cache/ccache` and ensures the service user can access it.
+
+1. Install and configure ccache globally (example for Debian/Ubuntu):
+
+```bash
+sudo apt-get update
+sudo apt-get install -y ccache
+sudo mkdir -p /var/cache/ccache
+sudo chown -R $(whoami):$(whoami) /var/cache/ccache
+# Optionally set system-wide env for runner service: /etc/environment
+echo 'CCACHE_DIR=/var/cache/ccache' | sudo tee -a /etc/environment
+```
+
+2. If using a runner service account (systemd), ensure the runner process inherits CCACHE_DIR. Example systemd snippet for a runner service unit (adjust paths and user):
+
+```
+[Unit]
+Description=GitHub Actions Runner (example)
+After=network.target
+
+[Service]
+User=runner
+Environment=CCACHE_DIR=/var/cache/ccache
+ExecStart=/home/runner/actions-runner/run.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+3. Verify cache availability on the runner by confirming ccache --show-config and that the CCACHE_DIR contains cached objects. If you want exclusive caches for certain repositories, use per-repo sub-directories and set CCACHE_DIR accordingly in your runner configuration.
+
+Note: When using shared caches, consider eviction and sizing policies (e.g., automated cron jobs to prune older items) and set appropriate filesystem permissions for the runner user.
+
 Running tests locally
 ---------------------
 

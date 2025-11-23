@@ -13,6 +13,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ${{ runner.os }}-ccache-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-
+          retention-days: 14
+
+      - name: Cache build dir
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: ${{ runner.os }}-build-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
+          retention-days: 14
+
       - name: Install packages
         run: |
           sudo apt-get update
@@ -44,15 +62,20 @@ jobs:
       - name: Setup ccache cache
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.ccache
-          key: ${{ runner.os }}-ccache-${{ hashFiles('**/CMakeLists.txt') }}
+          path: ~/.ccache
+          key: ${{ runner.os }}-ccache-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-
+          retention-days: 14
 
       - name: Cache build directory
         uses: actions/cache@v4
         with:
           path: build-full
-          key: ${{ runner.os }}-build-full-${{ hashFiles('**/CMakeLists.txt') }}
+          key: ${{ runner.os }}-build-full-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
+          restore-keys: |
+            ${{ runner.os }}-build-full-
+          retention-days: 14
 
       - uses: actions/checkout@v4
 
@@ -86,6 +109,15 @@ jobs:
         run: |
           brew update || true
           brew install cmake pkg-config wxwidgets portaudio gettext || true
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: macos-ccache-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
+          restore-keys: |
+            macos-ccache-
+          retention-days: 14
 
       - name: Configure (C++17)
         env:
@@ -127,6 +159,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache ccache (C++20 job)
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ${{ runner.os }}-ccache-cxx20-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-
+          retention-days: 14
+
       - name: Install packages (minimal)
         run: |
           sudo apt-get update
@@ -150,6 +191,15 @@ jobs:
     needs: linux-build
     steps:
       - uses: actions/checkout@v4
+
+      - name: Cache ccache (tests)
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ${{ runner.os }}-ccache-tests-${{ hashFiles('**/CMakeLists.txt','**/tests/**') }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-
+          retention-days: 14
 
       - name: Install minimal packages for tests
         run: |
@@ -187,7 +237,10 @@ jobs:
           uses: actions/cache@v4
           with:
             path: build-mac
-            key: macos-build-full-${{ hashFiles('**/CMakeLists.txt') }}
+            key: macos-build-full-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
+            restore-keys: |
+              macos-build-full-
+            retention-days: 14
 
         - name: Configure (C++17 — full build)
           env:
@@ -217,7 +270,10 @@ jobs:
           uses: actions/cache@v4
           with:
             path: build-win
-            key: windows-build-full-${{ hashFiles('**/CMakeLists.txt') }}
+            key: windows-build-full-${{ hashFiles('**/CMakeLists.txt','**/src/**') }}
+            restore-keys: |
+              windows-build-full-
+            retention-days: 14
 
         - name: Build (full product)
           shell: powershell
