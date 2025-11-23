@@ -11,6 +11,8 @@ specs
 .github/prompts
 .github/context
 .github/agents
+specs/**
+docs
 
 # User-specific files
 *.suo
@@ -22,6 +24,7 @@ specs
 *.userprefs
 
 # Build results
+[Bb]uild-full/
 [Bb]uild/
 [Dd]ebug/
 [Dd]ebugPublic/

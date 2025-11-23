@@ -5,6 +5,9 @@
 #include <wx/log.h>
 
 #include "DeviceWindows.h"
+#include "Device.h"
+#include "SupportedDevices.h"
+#include <string>
 
 DeviceWindows::DeviceWindows(IDeviceListener* pListener)
     : Device(pListener), wxFrame(nullptr, wxID_ANY, wxEmptyString)
@@ -55,10 +58,15 @@ bool DeviceWindows::DoesContainClevyKeyboard(DEVINST hDevice)
             _tcsupr(szHardwareId);
 
             // Check if it matches known Clevy Keyboard hardware IDs
-            if (_tcsstr(szHardwareId, TEXT("BTHENUM\\DEV_01000141")) != nullptr ||
-                _tcsstr(szHardwareId, TEXT("USB\\VID_04B4&PID_0101")) != nullptr ||
-                _tcsstr(szHardwareId, TEXT("USB\\VID_0CD3&PID_320F")) != nullptr)
-            {
+            std::string vid, pid;
+            if (extractVidPid(szHardwareId, vid, pid)) {
+                if (IsSupported(vid, pid)) {
+                    return true;
+                }
+            }
+
+            // Keep BT check for now
+            if (_tcsstr(szHardwareId, TEXT("BTHENUM\\DEV_01000141")) != nullptr) {
                 return true;
             }
         }
@@ -85,5 +93,20 @@ bool DeviceWindows::DoesContainClevyKeyboard(DEVINST hDevice)
         hDevice = hNextDevice;
     }
 
+    return false;
+}
+
+bool DeviceWindows::extractVidPid(const TCHAR* hardwareId, std::string& vid, std::string& pid)
+{
+    std::string hid = hardwareId;
+    size_t vidPos = hid.find("VID_");
+    if (vidPos != std::string::npos) {
+        vid = hid.substr(vidPos + 4, 4);
+        size_t pidPos = hid.find("PID_", vidPos);
+        if (pidPos != std::string::npos) {
+            pid = hid.substr(pidPos + 4, 4);
+            return true;
+        }
+    }
     return false;
 }
