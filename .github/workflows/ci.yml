@@ -19,8 +19,13 @@ jobs:
           sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libudev-dev libwxgtk3.0-gtk3-dev portaudio19-dev gettext
 
       - name: Configure (C++17)
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/ccache
         run: |
-          cmake -S . -B build -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF -DENABLE_CXX20=OFF
+          mkdir -p ${CCACHE_DIR}
+          ccache --version || sudo apt-get install -y ccache || true
+          cmake -S . -B build -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF -DENABLE_CXX20=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        # (single run block above uses ccache-aware configure)
 
       - name: Smoke compile and run small test (C++17)
         run: |
@@ -36,6 +41,19 @@ jobs:
     runs-on: ubuntu-latest
     needs: linux-build
     steps:
+      - name: Setup ccache cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.ccache
+          key: ${{ runner.os }}-ccache-${{ hashFiles('**/CMakeLists.txt') }}
+
+      - name: Cache build directory
+        uses: actions/cache@v4
+        with:
+          path: build-full
+          key: ${{ runner.os }}-build-full-${{ hashFiles('**/CMakeLists.txt') }}
+
       - uses: actions/checkout@v4
 
       - name: Install packages (full product build)
@@ -44,8 +62,12 @@ jobs:
           sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libudev-dev libwxgtk3.0-gtk3-dev libwxgtk-media3.0-gtk3-dev portaudio19-dev gettext libasound2-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
 
       - name: Configure (C++17 — full build)
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/ccache
         run: |
-          cmake -S . -B build-full -DENABLE_CXX20=OFF
+          mkdir -p ${CCACHE_DIR}
+          ccache --version || sudo apt-get install -y ccache || true
+          cmake -S . -B build-full -DENABLE_CXX20=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build (full product)
         run: cmake --build build-full --target Dyscover -j 2
@@ -66,8 +88,12 @@ jobs:
           brew install cmake pkg-config wxwidgets portaudio gettext || true
 
       - name: Configure (C++17)
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/ccache
         run: |
-          cmake -S . -B build -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF -DENABLE_CXX20=OFF
+          mkdir -p ${CCACHE_DIR}
+          ccache --version || brew install ccache || true
+          cmake -S . -B build -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF -DENABLE_CXX20=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Smoke compile and run small test (C++17)
         run: |
@@ -107,8 +133,13 @@ jobs:
           sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config
 
       - name: Configure with C++20
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/ccache
         run: |
-          cmake -S . -B build-cxx20 -DENABLE_CXX20=ON -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF
+          mkdir -p ${CCACHE_DIR}
+          ccache --version || sudo apt-get install -y ccache || true
+          cmake -S . -B build-cxx20 -DENABLE_CXX20=ON -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        # (single run block above uses ccache-aware configure)
 
       - name: Build (C++20 smoke)
         run: cmake --build build-cxx20 --target Dyscover -j 2 || true
@@ -126,8 +157,13 @@ jobs:
           sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config
 
       - name: Configure (build tests)
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/ccache
         run: |
-          cmake -S . -B build-tests -DBUILD_TESTS=ON -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF -DENABLE_CXX20=OFF
+          mkdir -p ${CCACHE_DIR}
+          ccache --version || sudo apt-get install -y ccache || true
+          cmake -S . -B build-tests -DBUILD_TESTS=ON -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF -DENABLE_CXX20=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        # (single run block above uses ccache-aware configure)
 
       - name: Build tests
         run: cmake --build build-tests --target DeviceStaticListTest -j 2
@@ -147,9 +183,19 @@ jobs:
             brew update || true
             brew install cmake pkg-config wxwidgets portaudio gettext || true
 
+        - name: Cache macOS build dir
+          uses: actions/cache@v4
+          with:
+            path: build-mac
+            key: macos-build-full-${{ hashFiles('**/CMakeLists.txt') }}
+
         - name: Configure (C++17 — full build)
+          env:
+            CCACHE_DIR: ${{ runner.temp }}/ccache
           run: |
-            cmake -S . -B build-mac -DENABLE_CXX20=OFF
+            mkdir -p ${CCACHE_DIR}
+            ccache --version || brew install ccache || true
+            cmake -S . -B build-mac -DENABLE_CXX20=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
         - name: Build (full product)
           run: cmake --build build-mac --target Dyscover -j 2 || true
@@ -166,6 +212,12 @@ jobs:
           run: |
             mkdir build-win
             cmake -S . -B build-win -G "Visual Studio 17 2022" -A x64 -DENABLE_CXX20=OFF -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF
+
+        - name: Cache Windows build dir
+          uses: actions/cache@v4
+          with:
+            path: build-win
+            key: windows-build-full-${{ hashFiles('**/CMakeLists.txt') }}
 
         - name: Build (full product)
           shell: powershell

@@ -10,12 +10,15 @@ on:
 
 jobs:
   integration:
-    name: Integration tests (manual trigger)
-    runs-on: ubuntu-latest
+    name: Integration tests (manual trigger — hardware)
+    # Only run if integration run was requested AND the repository has a secret configured for gated runs
+    if: ${{ github.event.inputs.run_integration == 'true' && secrets.INTEGRATION_RUN_TOKEN != '' }}
+    # This job is intended to run on a self-hosted machine that has attached hardware
+    runs-on: [self-hosted, linux, hardware]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies for integration tests
+      - name: Installing / verifying system dependencies for integration tests
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libudev-dev libwxgtk3.0-gtk3-dev portaudio19-dev gettext
@@ -29,8 +32,11 @@ jobs:
 
       - name: Run integration tests
         run: |
-          if [ "${{ github.event.inputs.run_integration }}" = "true" ]; then
-            ctest --test-dir build-integration --output-on-failure || true
-          else
-            echo "Integration tests skipped (set run_integration=true to run)"
-          fi
+          # This job is already gated by the run_integration input and presence of INTEGRATION_RUN_TOKEN
+          # It should only execute on a self-hosted hardware runner with actual devices attached.
+          ctest --test-dir build-integration --output-on-failure || true
+
+      - name: Post-run artifact gathering (optional)
+        if: ${{ always() }}
+        run: |
+          echo "Note: this job runs on self-hosted hardware. Add logs/artifacts collection here as needed."
