@@ -38,7 +38,7 @@ jobs:
 
       - name: Configure (C++17)
         env:
-          CCACHE_DIR: ${{ runner.temp }}/ccache
+          CCACHE_DIR: ~/.ccache
         run: |
           mkdir -p ${CCACHE_DIR}
           ccache --version || sudo apt-get install -y ccache || true
