@@ -6,8 +6,8 @@
 #include <cassert>
 #include <iostream>
 #include <fstream>
-#include <cstdio> // for tmpnam
-#include <unistd.h> // for close() and mkstemp()
+#include <filesystem>
+#include <random>
 
 void testHexValidation() {
     DeviceConfig config;
@@ -38,14 +38,18 @@ void testDuplicateDetection() {
 }
 
 void testConfigLoadSave() {
-    // Create temp file
-    char tempFile[] = "/tmp/test_config_XXXXXX";
-    int fd = mkstemp(tempFile);
-    close(fd);
+    // Create temp file using C++17 filesystem (cross-platform)
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(10000, 99999);
+    
+    auto tempDir = std::filesystem::temp_directory_path();
+    auto tempFile = tempDir / ("test_config_" + std::to_string(dis(gen)) + ".json");
+    std::string tempFilePath = tempFile.string();
 
     {
         DeviceConfig config;
-        config.load(tempFile); // Should create default
+        config.load(tempFilePath); // Should create default
         assert(config.getDevices().size() == 2); // Default devices
     }
 
@@ -53,17 +57,17 @@ void testConfigLoadSave() {
         DeviceConfig config;
         SupportedDevice newDev("1234", "5678", "Test Device");
         config.addDevice(newDev);
-        config.save(tempFile);
+        config.save(tempFilePath);
     }
 
     {
         DeviceConfig config;
-        config.load(tempFile);
+        config.load(tempFilePath);
         assert(config.getDevices().size() == 3); // 2 default + 1 added
         assert(config.isDeviceSupported("1234", "5678"));
     }
 
-    std::remove(tempFile);
+    std::filesystem::remove(tempFile);
     std::cout << "testConfigLoadSave passed" << std::endl;
 }
 
