@@ -31,7 +31,9 @@ Core::Core(App* pApp, Config* pConfig, Device* pDevice)
     m_pSpeech->Init(GetTTSDataPath(), TTS_LANG, TTS_VOICE);
     m_pSpeech->SetVolume(RSTTS_VOLUME_MAX);
 
-    m_bKeyboardConnected = pDevice != nullptr ? pDevice->IsClevyKeyboardPresent() : false;
+    // Device presence will be set by the detector's initial callback
+    // during startMonitoring(), so initialize to false here
+    m_bKeyboardConnected = false;
 
     // Instantiate platform abstractions (factories created in src/platform)
     // Device detector uses a listener adapter that calls Core's handlers
@@ -50,6 +52,10 @@ Core::Core(App* pApp, Config* pConfig, Device* pDevice)
     try {
         m_pDeviceDetectorListener.reset(new DetectorAdapter(this));
         m_pDeviceDetector = CreateDeviceDetector(m_pDeviceDetectorListener.get());
+        // Start monitoring for device hotplug events
+        if (m_pDeviceDetector) {
+            m_pDeviceDetector->startMonitoring();
+        }
     } catch (...) {
         // swallow errors during early wiring
         m_pDeviceDetector.reset();
@@ -77,6 +83,11 @@ Core::Core(App* pApp, Config* pConfig, Device* pDevice)
 
 Core::~Core()
 {
+    // Stop device monitoring before cleanup
+    if (m_pDeviceDetector) {
+        m_pDeviceDetector->stopMonitoring();
+    }
+    
     m_pSpeech->Term();
     delete m_pSpeech;
     delete m_pSoundPlayer;

@@ -57,15 +57,15 @@ Checkpoint: Foundational abstractions compile + failing tests in place.
 - [X] T028 [P] [US1] Refactor Linux detector from DeviceLinux.cpp into src/platform/DeviceDetectorLinux.cpp
 - [X] T029 [P] [US1] Implement macOS detector (IOKit enumeration) in src/platform/DeviceDetectorMac.cpp
 - [X] T030 [P] [US1] Implement ChromeOS detector (reuse Linux + sandbox fallback) in src/platform/DeviceDetectorChromeOS.cpp
-- [ ] T031 [US1] Implement polling fallback logic for restricted platforms in src/platform/DeviceDetector.cpp
-- [ ] T032 [US1] Integrate BT hardware ID check (from Windows code) cross-platform if feasible in src/platform/DeviceDetectorWindows.cpp
-- [ ] T033 [US1] Add capability flags (HOTPLUG_EVENTS/POLLING_ONLY) in src/platform/DeviceDetector.h
-- [ ] T034 [US1] Update SupportedDevices usage to new detector in src/SupportedDevices.h
-- [ ] T035 [US1] Update Core to use detector factory & listener in src/Core.cpp
-- [ ] T036 [US1] Remove direct device enumeration logic from legacy `DeviceWindows.cpp` / `DeviceLinux.cpp` in src/DeviceWindows.cpp
-- [ ] T037 [US1] Adapt tests to pass by implementing mocks in tests/unit/DeviceDetectorTest.cpp
+- [X] T031 [US1] Implement polling fallback logic for restricted platforms in src/platform/DeviceDetector.cpp
+- [X] T032 [US1] Integrate BT hardware ID check (from Windows code) cross-platform if feasible in src/platform/DeviceDetectorWindows.cpp
+- [X] T033 [US1] Add capability flags (HOTPLUG_EVENTS/POLLING_ONLY) in src/platform/DeviceDetector.h
+- [X] T034 [US1] Update SupportedDevices usage to new detector in src/SupportedDevices.h
+- [X] T035 [US1] Update Core to use detector factory & listener in src/Core.cpp
+- [X] T036 [US1] Remove direct device enumeration logic from legacy `DeviceWindows.cpp` / `DeviceLinux.cpp` in src/DeviceWindows.cpp
+- [X] T037 [US1] Adapt tests to pass by implementing mocks in tests/unit/DeviceDetectorTest.cpp
 - [ ] T038 [US1] Add detection latency benchmark (optional) in tests/unit/DeviceDetectorBenchmark.cpp
-- [ ] T039 [US1] Documentation update detection section in specs/002-cross-platform-support/quickstart.md
+- [X] T039 [US1] Documentation update detection section in specs/002-cross-platform-support/quickstart.md
 
 Checkpoint: Device presence detection functional across platforms.
 

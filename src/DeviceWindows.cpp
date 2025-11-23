@@ -35,14 +35,11 @@ WXLRESULT DeviceWindows::MSWWindowProc(WXUINT message, WXWPARAM wParam, WXLPARAM
 
 bool DeviceWindows::IsClevyKeyboardPresent()
 {
-    DEVINST hRootDevice;
-    CONFIGRET cr = CM_Locate_DevNode(&hRootDevice, nullptr, CM_LOCATE_DEVINST_NORMAL);
-    if (cr != CR_SUCCESS)
-    {
-        return false;
-    }
-
-    return DoesContainClevyKeyboard(hRootDevice);
+    // DEPRECATED: Device detection now handled by platform abstraction layer
+    // (DeviceDetectorWindows). This legacy method is retained for backward
+    // compatibility but always returns false. Applications should use
+    // CreateDeviceDetector() from platform/DeviceDetector.h instead.
+    return false;
 }
 
 bool DeviceWindows::DoesContainClevyKeyboard(DEVINST hDevice)
