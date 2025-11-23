@@ -266,6 +266,18 @@ endif()
 configure_file(res/VersionInfo.h.in ${CMAKE_CURRENT_BINARY_DIR}/generated/VersionInfo.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/generated/)
 
+# Tests
+option(BUILD_TESTS "Build and enable unit tests" ON)
+if(BUILD_TESTS)
+  enable_testing()
+  # Unit test: DeviceStaticListTest (depends only on SupportedDevices.h)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/DeviceStaticListTest.cpp")
+    add_executable(DeviceStaticListTest tests/unit/DeviceStaticListTest.cpp)
+    target_include_directories(DeviceStaticListTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    add_test(NAME unit-DeviceStaticList COMMAND DeviceStaticListTest)
+  endif()
+endif()
+
 # Resources
 if(WIN32)
     target_sources(Dyscover PRIVATE res/Dyscover.rc)
