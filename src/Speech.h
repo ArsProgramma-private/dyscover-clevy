@@ -9,6 +9,9 @@
 
 #ifndef __NO_TTS__
 #include <librstts.h>
+#else
+// Define stub constants when TTS is disabled
+#define RSTTS_VOLUME_MAX 250.0f
 #endif
 
 #include "Audio.h"

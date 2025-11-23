@@ -58,12 +58,4 @@ void Audio::Stop()
 	Pa_Sleep(100);
 	Pa_StartStream(m_pStream);
 }
-#else
-// Stub implementations when PortAudio is disabled.
-Audio::Audio() {}
-Audio::~Audio() {}
-bool Audio::Open(int, int, PaSampleFormat) { return false; }
-void Audio::Close() {}
-bool Audio::Write(const void*, unsigned long) { return false; }
-void Audio::Stop() {}
-#endif
+#endif // __NO_PORTAUDIO__
