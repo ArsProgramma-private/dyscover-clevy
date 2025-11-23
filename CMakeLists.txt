@@ -7,7 +7,9 @@ project(Dyscover
   LANGUAGES CXX
 )
 
-set(CMAKE_CXX_STANDARD 14)  # Use C++14
+set(CMAKE_CXX_STANDARD 17)  # Use C++17 minimum (see specs/001-upgrade-cpp17/spec.md)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(Dyscover WIN32
   src/App.cpp
@@ -22,6 +24,7 @@ add_executable(Dyscover WIN32
   src/Core.h
   src/Device.cpp
   src/Device.h
+  src/SupportedDevices.h
   src/Keyboard.cpp
   src/Keyboard.h
   src/Keys.cpp
@@ -65,19 +68,54 @@ else()
   target_compile_options(Dyscover PRIVATE -Wall -Wextra -Werror -pedantic -Wno-error=missing-field-initializers)
 endif()
 
+# Enforce minimum compiler versions / sanity checks
+message(STATUS "C++ standard requested: ${CMAKE_CXX_STANDARD}")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.0")
+    message(FATAL_ERROR "GCC version ${CMAKE_CXX_COMPILER_VERSION} is too old — require GCC >= 9.0. See specs/001-upgrade-cpp17/spec.md for details.")
+  endif()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
+    message(FATAL_ERROR "Clang version ${CMAKE_CXX_COMPILER_VERSION} is too old — require Clang >= 10.0. See specs/001-upgrade-cpp17/spec.md for details.")
+  endif()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  # CMake exposes MSVC toolset versions via MSVC_VERSION or compiler version. Visual Studio 2019 (16.8) corresponds to MSVC >= 19.28.
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "19.28")
+    message(FATAL_ERROR "MSVC version ${CMAKE_CXX_COMPILER_VERSION} is too old — require Visual Studio 2019 (16.8+) / MSVC >= 19.28. See specs/001-upgrade-cpp17/spec.md for details.")
+  endif()
+else()
+  message(WARNING "Unknown compiler '${CMAKE_CXX_COMPILER_ID}'; attempting configuration but C++17 support is required.")
+endif()
+
 # Use wxWidgets
 find_package(wxWidgets REQUIRED)
 include(${wxWidgets_USE_FILE})
 target_link_libraries(Dyscover ${wxWidgets_LIBRARIES})
 
-# Use PortAudio
+# Use PortAudio (improved: graceful pkg-config handling + proper includes/libs)
 if(WIN32)
   find_package(PortAudio REQUIRED)
+  # FindPortAudio provides PORTAUDIO_LIBRARIES / PORTAUDIO_INCLUDE_DIR
+  if(PORTAUDIO_INCLUDE_DIR)
+    target_include_directories(Dyscover PRIVATE ${PORTAUDIO_INCLUDE_DIR})
+  endif()
+  if(PORTAUDIO_LIBRARIES)
+    target_link_libraries(Dyscover ${PORTAUDIO_LIBRARIES})
+  else()
+    # Fallback if variable name differs (rare)
+    target_link_libraries(Dyscover portaudio)
+  endif()
 else()
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(PORTAUDIO portaudio-2.0)
+  find_package(PkgConfig) # Optional, emit clear error if missing
+  if(PKG_CONFIG_FOUND)
+    pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
+    pkg_check_modules(UDEV REQUIRED libudev)
+    target_include_directories(Dyscover PRIVATE ${PORTAUDIO_INCLUDE_DIRS} ${UDEV_INCLUDE_DIRS})
+    target_link_libraries(Dyscover ${PORTAUDIO_LIBRARIES} ${UDEV_LIBRARIES})
+  else()
+    message(FATAL_ERROR "pkg-config not found; install it (e.g. apt install pkg-config) to build on UNIX.")
+  endif()
 endif()
-target_link_libraries(Dyscover portaudio)
 
 # Use librstts
 target_include_directories(Dyscover PRIVATE lib/rstts/include/)
