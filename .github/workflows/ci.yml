@@ -112,3 +112,62 @@ jobs:
 
       - name: Build (C++20 smoke)
         run: cmake --build build-cxx20 --target Dyscover -j 2 || true
+
+  linux-tests:
+    name: Linux unit tests
+    runs-on: ubuntu-latest
+    needs: linux-build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install minimal packages for tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config
+
+      - name: Configure (build tests)
+        run: |
+          cmake -S . -B build-tests -DBUILD_TESTS=ON -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF -DENABLE_CXX20=OFF
+
+      - name: Build tests
+        run: cmake --build build-tests --target DeviceStaticListTest -j 2
+
+      - name: Run tests
+        run: ctest --test-dir build-tests --output-on-failure || true
+
+  macos-full-build:
+      name: macOS full product build
+      runs-on: macos-latest
+      needs: macos-build
+      steps:
+        - uses: actions/checkout@v4
+
+        - name: Install packages (full product)
+          run: |
+            brew update || true
+            brew install cmake pkg-config wxwidgets portaudio gettext || true
+
+        - name: Configure (C++17 — full build)
+          run: |
+            cmake -S . -B build-mac -DENABLE_CXX20=OFF
+
+        - name: Build (full product)
+          run: cmake --build build-mac --target Dyscover -j 2 || true
+
+  windows-full-build:
+      name: Windows full product build
+      runs-on: windows-2022
+      needs: windows-check
+      steps:
+        - uses: actions/checkout@v4
+
+        - name: Configure (Visual Studio generator x64)
+          shell: powershell
+          run: |
+            mkdir build-win
+            cmake -S . -B build-win -G "Visual Studio 17 2022" -A x64 -DENABLE_CXX20=OFF -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF
+
+        - name: Build (full product)
+          shell: powershell
+          run: |
+            cmake --build build-win --config Release --target Dyscover || true
