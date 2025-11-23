@@ -36,4 +36,17 @@ cmake -S . -B build-tests -DBUILD_TESTS=ON
 cmake --build build-tests --target DeviceStaticListTest
 ctest --test-dir build-tests --output-on-failure
 ```
+
+Integration tests (manual)
+-------------------------
+
+Integration tests are hardware-dependent and run on a manual CI trigger. To run the integration test workflow from GitHub Actions use the "Run workflow" button on the Actions page, and set the input `run_integration=true`.
+
+Locally you can enable integration tests with:
+
+```bash
+cmake -S . -B build-integration -DBUILD_TESTS=ON -DBUILD_INTEGRATION_TESTS=ON
+cmake --build build-integration --target Integration-DeviceDetectionStaticList
+ctest --test-dir build-integration --output-on-failure
+```
 ```
