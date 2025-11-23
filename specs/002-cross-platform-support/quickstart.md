@@ -46,5 +46,16 @@ If interception/injection is unavailable or denied, the application falls back t
 - Volume: try libpulse; if unavailable attempt ALSA; else mark unsupported.
 - Keystroke interception: probe permissions; disable gracefully if denied.
 
+## Resource Loading (T055-T060 Complete)
+
+All resource paths now use the `IResourceLocator` abstraction in `src/platform/ResourceLocator.cpp`:
+- **Icons**: Platform-specific extensions automatically appended (.ico for Windows/Linux/ChromeOS, .icns for macOS)
+- **Splash**: Bitmap resolved via `splashBitmap()` method
+- **Audio**: Sound files directory via `audioDir()` 
+- **TTS Data**: Speech synthesis data in nested path via `ttsDir()` returning `/tts/data`
+- **Translations**: Language-specific path via `translationsDir()` returning `/lang/nl` (or nl_be)
+
+`ResourceLoader.cpp` functions (`GetSoundFilesPath()`, `GetTTSDataPath()`, `GetTranslationsPath()`, `LoadIcon()`, `LoadSplashBitmap()`) now delegate to ResourceLocator, eliminating direct platform conditionals in callers.
+
 ## Next Actions
-Implement interfaces sequentially: DeviceDetector → KeyboardHandler → AudioController → ResourceLocator refactor. Then migrate existing code paths to use abstractions.
+Complete device detection implementation (US1) or audio controller backends (US3). Keyboard handling (US2) and resource loading (US4) are functional with room for advanced features (AltGr mapping, dead keys, injection).

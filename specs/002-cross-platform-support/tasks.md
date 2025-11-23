@@ -100,15 +100,15 @@ Checkpoint: Cross-platform keyboard handling available.
 **Independent Test**: Launch app and verify icons & paths resolved without platform condition leaks.
 
 ### Tests
-- [ ] T054 [P] [US4] Extend resource locator paths test: icons/audio/tts/translations in tests/unit/ResourceLocatorPathsTest.cpp
+- [X] T054 [P] [US4] Extend resource locator paths test: icons/audio/tts/translations in tests/unit/ResourceLocatorPathsTest.cpp
 
 ### Implementation
-- [ ] T055 [P] [US4] Refactor existing `ResourceLoader.cpp` to use ResourceLocator interface in src/ResourceLoader.cpp
-- [ ] T056 [P] [US4] Implement platform-specific icon suffix logic (ico/icns) in src/platform/ResourceLocator.cpp
-- [ ] T057 [US4] Ensure ChromeOS uses Linux icon strategy in src/platform/ResourceLocator.cpp
-- [ ] T058 [US4] Replace direct path concatenations in codebase with ResourceLocator calls in src/Core.cpp
-- [ ] T059 [US4] Migrate splash bitmap loading behind abstraction in src/ResourceLoader.cpp
-- [ ] T060 [US4] Update quickstart resource section in specs/002-cross-platform-support/quickstart.md
+- [X] T055 [P] [US4] Refactor existing `ResourceLoader.cpp` to use ResourceLocator interface in src/ResourceLoader.cpp
+- [X] T056 [P] [US4] Implement platform-specific icon suffix logic (ico/icns) in src/platform/ResourceLocator.cpp
+- [X] T057 [US4] Ensure ChromeOS uses Linux icon strategy in src/platform/ResourceLocator.cpp
+- [X] T058 [US4] Replace direct path concatenations in codebase with ResourceLocator calls in src/Core.cpp
+- [X] T059 [US4] Migrate splash bitmap loading behind abstraction in src/ResourceLoader.cpp
+- [X] T060 [US4] Update quickstart resource section in specs/002-cross-platform-support/quickstart.md
 
 Checkpoint: Resource loading unified and verified.
 
