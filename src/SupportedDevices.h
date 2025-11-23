@@ -29,7 +29,7 @@ inline std::string NormalizeHex4(const std::string& in)
     // Uppercase
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return static_cast<char>(::toupper(c)); });
     // Pad or truncate to 4
-    if (s.size() < 4) s.append(4 - s.size(), '0');
+    if (s.size() < 4) s.insert(0, 4 - s.size(), '0');
     if (s.size() > 4) s = s.substr(0,4);
     return s;
 }
