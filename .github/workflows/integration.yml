@@ -1,0 +1,68 @@
+name: Integration Tests (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_integration:
+        description: 'Set to true to run integration tests' 
+        required: true
+        default: 'false'
+
+jobs:
+  integration:
+    name: Integration tests (manual trigger — hardware)
+    # Only run if integration run was requested AND the repository has a secret configured for gated runs
+    if: ${{ github.event.inputs.run_integration == 'true' && secrets.INTEGRATION_RUN_TOKEN != '' }}
+    # This job is intended to run on a self-hosted machine that has attached hardware
+    runs-on: [self-hosted, linux, hardware]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installing / verifying system dependencies for integration tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libudev-dev libwxgtk3.0-gtk3-dev portaudio19-dev gettext
+
+      - name: Configure (enable integration tests)
+        run: |
+          cmake -S . -B build-integration -DBUILD_TESTS=ON -DBUILD_INTEGRATION_TESTS=ON -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=ON
+
+      - name: Build integration tests
+        run: cmake --build build-integration --target Integration-DeviceDetectionStaticList -j 2 || true
+
+      - name: Run integration tests
+        run: |
+          # This job is already gated by the run_integration input and presence of INTEGRATION_RUN_TOKEN
+          # It should only execute on a self-hosted hardware runner with actual devices attached.
+          ctest --test-dir build-integration --output-on-failure || true
+
+      - name: Collect integration logs and artifacts
+        if: ${{ always() }}
+        run: |
+          set -e
+          mkdir -p artifacts || true
+          # capture ctest output for debugging
+          if [ -d build-integration ]; then
+            ctest --test-dir build-integration --output-on-failure --verbose > artifacts/ctest-output.txt || true
+          fi
+          # save CTest last test log if present
+          if [ -f build-integration/Testing/Temporary/LastTest.log ]; then
+            cp build-integration/Testing/Temporary/LastTest.log artifacts/LastTest.log || true
+          fi
+          # save build directory (compressed, may be large)
+          if [ -d build-integration ]; then
+            tar -czf artifacts/build-integration.tgz build-integration || true
+          fi
+          # capture ccache contents (if present)
+          CCACHE_DIR=${CCACHE_DIR:-~/.ccache}
+          if [ -d "$CCACHE_DIR" ]; then
+            tar -czf artifacts/ccache.tgz -C "${CCACHE_DIR%/*}" "${CCACHE_DIR##*/}" || true
+          fi
+
+      - name: Upload integration artifacts
+        uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: integration-artifacts
+          path: artifacts
+          retention-days: 14

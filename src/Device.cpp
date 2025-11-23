@@ -12,6 +12,8 @@
 #include "DeviceLinux.h"
 #endif
 
+// Removed runtime JSON configuration; device list is now compile-time.
+
 Device* Device::Create(IDeviceListener* pListener)
 {
 #ifdef WIN32

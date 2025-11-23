@@ -7,7 +7,17 @@ project(Dyscover
   LANGUAGES CXX
 )
 
-set(CMAKE_CXX_STANDARD 14)  # Use C++14
+option(ENABLE_CXX20 "Allow building with C++20 (optional)" OFF)
+if(ENABLE_CXX20)
+  set(CMAKE_CXX_STANDARD 20)
+else()
+  set(CMAKE_CXX_STANDARD 17)  # Use C++17 minimum (see specs/001-upgrade-cpp17/spec.md)
+endif()
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Allow CI to skip optional librstts linking (some CI images don't provide the prebuilt binary)
+option(BUILD_WITH_LIBRSTTS "Link and package librstts runtime library" ON)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(Dyscover WIN32
   src/App.cpp
@@ -22,6 +32,7 @@ add_executable(Dyscover WIN32
   src/Core.h
   src/Device.cpp
   src/Device.h
+  src/SupportedDevices.h
   src/Keyboard.cpp
   src/Keyboard.h
   src/Keys.cpp
@@ -44,7 +55,7 @@ add_executable(Dyscover WIN32
 # Platform-specifics
 if(WIN32)
   target_sources(Dyscover PRIVATE src/DeviceWindows.cpp src/DeviceWindows.h)
-  target_link_libraries(Dyscover cfgmgr32.lib)
+  target_link_libraries(Dyscover PRIVATE cfgmgr32.lib)
   target_sources(Dyscover PRIVATE src/KeyboardWindows.cpp src/KeyboardWindows.h)
 elseif(UNIX)
   target_sources(Dyscover PRIVATE src/DeviceLinux.cpp src/DeviceLinux.h)
@@ -65,19 +76,72 @@ else()
   target_compile_options(Dyscover PRIVATE -Wall -Wextra -Werror -pedantic -Wno-error=missing-field-initializers)
 endif()
 
+# Enforce minimum compiler versions / sanity checks
+message(STATUS "C++ standard requested: ${CMAKE_CXX_STANDARD}")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.0")
+    message(FATAL_ERROR "GCC version ${CMAKE_CXX_COMPILER_VERSION} is too old — require GCC >= 9.0. See specs/001-upgrade-cpp17/spec.md for details.")
+  endif()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
+    message(FATAL_ERROR "Clang version ${CMAKE_CXX_COMPILER_VERSION} is too old — require Clang >= 10.0. See specs/001-upgrade-cpp17/spec.md for details.")
+  endif()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  # CMake exposes MSVC toolset versions via MSVC_VERSION or compiler version. Visual Studio 2019 (16.8) corresponds to MSVC >= 19.28.
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "19.28")
+    message(FATAL_ERROR "MSVC version ${CMAKE_CXX_COMPILER_VERSION} is too old — require Visual Studio 2019 (16.8+) / MSVC >= 19.28. See specs/001-upgrade-cpp17/spec.md for details.")
+  endif()
+else()
+  message(WARNING "Unknown compiler '${CMAKE_CXX_COMPILER_ID}'; attempting configuration but C++17 support is required.")
+endif()
+
 # Use wxWidgets
 find_package(wxWidgets REQUIRED)
 include(${wxWidgets_USE_FILE})
-target_link_libraries(Dyscover ${wxWidgets_LIBRARIES})
+target_link_libraries(Dyscover PRIVATE ${wxWidgets_LIBRARIES})
 
-# Use PortAudio
+# Use PortAudio (improved: graceful pkg-config handling + proper includes/libs)
+option(BUILD_WITH_PORTAUDIO "Enable linking to PortAudio" ON)
 if(WIN32)
-  find_package(PortAudio REQUIRED)
+  if(BUILD_WITH_PORTAUDIO)
+    find_package(PortAudio REQUIRED)
+  else()
+    message(STATUS "Skipping PortAudio support (BUILD_WITH_PORTAUDIO=OFF)")
+    target_compile_definitions(Dyscover PRIVATE __NO_PORTAUDIO__)
+  endif()
+  if(PORTAUDIO_INCLUDE_DIR)
+    target_include_directories(Dyscover PRIVATE ${PORTAUDIO_INCLUDE_DIR})
+  endif()
+  if(BUILD_WITH_PORTAUDIO)
+    if(PORTAUDIO_LIBRARIES)
+      target_link_libraries(Dyscover PRIVATE ${PORTAUDIO_LIBRARIES})
+    else()
+      if(PortAudio_FOUND OR PORTAUDIO_FOUND)
+        target_link_libraries(Dyscover PRIVATE portaudio)
+      else()
+        message(FATAL_ERROR "PortAudio not found: cannot link Dyscover with PortAudio. Please ensure PortAudio is installed and CMake can find it.")
+      endif()
+    endif()
+  endif()
 else()
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(PORTAUDIO portaudio-2.0)
+  find_package(PkgConfig)
+  if(PKG_CONFIG_FOUND)
+    if(BUILD_WITH_PORTAUDIO)
+      pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
+    endif()
+    pkg_check_modules(UDEV REQUIRED libudev)
+    if(BUILD_WITH_PORTAUDIO)
+      target_include_directories(Dyscover PRIVATE ${PORTAUDIO_INCLUDE_DIRS} ${UDEV_INCLUDE_DIRS})
+      target_link_libraries(Dyscover PRIVATE ${PORTAUDIO_LIBRARIES} ${UDEV_LIBRARIES})
+    else()
+      target_include_directories(Dyscover PRIVATE ${UDEV_INCLUDE_DIRS})
+      target_link_libraries(Dyscover PRIVATE ${UDEV_LIBRARIES})
+      target_compile_definitions(Dyscover PRIVATE __NO_PORTAUDIO__)
+    endif()
+  else()
+    message(FATAL_ERROR "pkg-config not found; install it (e.g. apt install pkg-config) to build on UNIX.")
+  endif()
 endif()
-target_link_libraries(Dyscover portaudio)
 
 # Use librstts
 target_include_directories(Dyscover PRIVATE lib/rstts/include/)
@@ -103,15 +167,17 @@ if(WIN32)
         COMMAND lib.exe /nologo /name:librstts-2 /machine:${LIBRSTTS_MACHINE} /def:${LIBRSTTS_DEF_FILE} /out:${LIBRSTTS_LIB_FILE}
     )
 
-    # Link .exe with generated .lib
-    target_sources(Dyscover PRIVATE ${LIBRSTTS_LIB_FILE})
-    target_link_libraries(Dyscover ${LIBRSTTS_LIB_FILE})
-
-    # Copy .dll file to the folder where .exe is
-    add_custom_command(
+    if(BUILD_WITH_LIBRSTTS)
+      target_sources(Dyscover PRIVATE ${LIBRSTTS_LIB_FILE})
+      target_link_libraries(Dyscover PRIVATE ${LIBRSTTS_LIB_FILE})
+      add_custom_command(
         TARGET Dyscover POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${LIBRSTTS_DLL_FILE} $<TARGET_FILE_DIR:Dyscover>
-    )
+      )
+    else()
+      message(STATUS "Skipping linking of librstts (BUILD_WITH_LIBRSTTS=OFF)")
+      target_compile_definitions(Dyscover PRIVATE __NO_TTS__)
+    endif()
 
     # Copy data files
     add_custom_command(
@@ -120,8 +186,40 @@ if(WIN32)
         COMMENT "Updating TTS data files ..."
     )
 else()
-    link_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/x86_64-pc-linux-gnu)
-    target_link_libraries(Dyscover rstts)
+    if(BUILD_WITH_LIBRSTTS)
+      # Try to find a prebuilt librstts binary shipped in the repo for this platform.
+      if(APPLE)
+        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+          set(LIBRSTTS_PLATFORM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/x86_64-apple-darwin")
+        else()
+          set(LIBRSTTS_PLATFORM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/i686-apple-darwin")
+        endif()
+      elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
+        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+          set(LIBRSTTS_PLATFORM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/x86_64-pc-linux-gnu")
+        else()
+          set(LIBRSTTS_PLATFORM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/i686-pc-linux-gnu")
+        endif()
+      else()
+        # Fallback: assume linux-64
+        set(LIBRSTTS_PLATFORM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/x86_64-pc-linux-gnu")
+      endif()
+
+      file(GLOB LIBRSTTS_CANDIDATES "${LIBRSTTS_PLATFORM_DIR}/librstts.*")
+      if(LIBRSTTS_CANDIDATES)
+        list(GET LIBRSTTS_CANDIDATES 0 LIBRSTTS_LIB_FILE)
+        message(STATUS "Found librstts file: ${LIBRSTTS_LIB_FILE}")
+        # Link using the full path to avoid relying on name/version symlinks
+        target_link_libraries(Dyscover PRIVATE ${LIBRSTTS_LIB_FILE})
+      else()
+        message(WARNING "librstts requested (BUILD_WITH_LIBRSTTS=ON) but no binary found in ${LIBRSTTS_PLATFORM_DIR}. Disabling librstts support for this build.")
+        set(BUILD_WITH_LIBRSTTS OFF)
+        target_compile_definitions(Dyscover PRIVATE __NO_TTS__)
+      endif()
+    else()
+      message(STATUS "Skipping linking to librstts on UNIX (BUILD_WITH_LIBRSTTS=OFF)")
+      target_compile_definitions(Dyscover PRIVATE __NO_TTS__)
+    endif()
 endif()
 
 # Languages
@@ -179,6 +277,33 @@ endif()
 # Version
 configure_file(res/VersionInfo.h.in ${CMAKE_CURRENT_BINARY_DIR}/generated/VersionInfo.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/generated/)
+
+# Tests
+option(BUILD_TESTS "Build and enable unit tests" ON)
+option(BUILD_INTEGRATION_TESTS "Build integration tests (hardware-dependent)" OFF)
+if(BUILD_TESTS)
+  enable_testing()
+  # Unit test: DeviceStaticListTest (depends only on SupportedDevices.h)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/DeviceStaticListTest.cpp")
+    add_executable(DeviceStaticListTest tests/unit/DeviceStaticListTest.cpp)
+    target_include_directories(DeviceStaticListTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    add_test(NAME unit-DeviceStaticList COMMAND DeviceStaticListTest)
+  endif()
+  # Integration tests are optional and only enabled with BUILD_INTEGRATION_TESTS=ON
+  if(BUILD_INTEGRATION_TESTS)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/DeviceDetectionStaticListTest.cpp")
+      add_executable(Integration-DeviceDetectionStaticList tests/integration/DeviceDetectionStaticListTest.cpp)
+      target_include_directories(Integration-DeviceDetectionStaticList PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+      add_test(NAME integration-DeviceDetectionStaticList COMMAND Integration-DeviceDetectionStaticList)
+    endif()
+
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/DeviceIntegrationTest.cpp")
+      add_executable(Integration-DeviceIntegration tests/integration/DeviceIntegrationTest.cpp)
+      target_include_directories(Integration-DeviceIntegration PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+      add_test(NAME integration-DeviceIntegration COMMAND Integration-DeviceIntegration)
+    endif()
+  endif()
+endif()
 
 # Resources
 if(WIN32)

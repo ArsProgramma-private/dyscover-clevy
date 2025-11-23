@@ -1,0 +1,50 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Supported Devices Configuration",
+    "description": "Schema for the supported_devices.json configuration file",
+    "type": "object",
+    "properties": {
+        "version": {
+            "type": "string",
+            "description": "Configuration file version",
+            "enum": [
+                "1.0"
+            ]
+        },
+        "devices": {
+            "type": "array",
+            "description": "List of supported USB devices",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "vendorId": {
+                        "type": "string",
+                        "description": "4-character hexadecimal Vendor ID",
+                        "pattern": "^[0-9A-Fa-f]{4}$"
+                    },
+                    "productId": {
+                        "type": "string",
+                        "description": "4-character hexadecimal Product ID",
+                        "pattern": "^[0-9A-Fa-f]{4}$"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Optional human-readable device description",
+                        "maxLength": 100
+                    }
+                },
+                "required": [
+                    "vendorId",
+                    "productId"
+                ],
+                "additionalProperties": false
+            },
+            "uniqueItems": true
+        }
+    },
+    "required": [
+        "version",
+        "devices"
+    ],
+    "additionalProperties": false
+}

@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "SupportedDevices.h"
+
 class IDeviceListener
 {
 public:
@@ -24,6 +26,8 @@ public:
 protected:
     void InitClevyKeyboardPresence();
     void RefreshClevyKeyboardPresence();
+
+    // Removed DeviceConfig; compile-time list in SupportedDevices.h
 
 private:
     IDeviceListener* m_pListener;
