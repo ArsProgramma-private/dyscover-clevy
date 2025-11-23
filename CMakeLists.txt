@@ -7,8 +7,16 @@ project(Dyscover
   LANGUAGES CXX
 )
 
-set(CMAKE_CXX_STANDARD 17)  # Use C++17 minimum (see specs/001-upgrade-cpp17/spec.md)
+option(ENABLE_CXX20 "Allow building with C++20 (optional)" OFF)
+if(ENABLE_CXX20)
+  set(CMAKE_CXX_STANDARD 20)
+else()
+  set(CMAKE_CXX_STANDARD 17)  # Use C++17 minimum (see specs/001-upgrade-cpp17/spec.md)
+endif()
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Allow CI to skip optional librstts linking (some CI images don't provide the prebuilt binary)
+option(BUILD_WITH_LIBRSTTS "Link and package librstts runtime library" ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(Dyscover WIN32
@@ -141,11 +149,21 @@ if(WIN32)
         COMMAND lib.exe /nologo /name:librstts-2 /machine:${LIBRSTTS_MACHINE} /def:${LIBRSTTS_DEF_FILE} /out:${LIBRSTTS_LIB_FILE}
     )
 
-    # Link .exe with generated .lib
-    target_sources(Dyscover PRIVATE ${LIBRSTTS_LIB_FILE})
-    target_link_libraries(Dyscover ${LIBRSTTS_LIB_FILE})
+    if(BUILD_WITH_LIBRSTTS)
+      # Link .exe with generated .lib
+      target_sources(Dyscover PRIVATE ${LIBRSTTS_LIB_FILE})
+      target_link_libraries(Dyscover ${LIBRSTTS_LIB_FILE})
+    else()
+      message(STATUS "Skipping linking of librstts (BUILD_WITH_LIBRSTTS=OFF)")
+    endif()
 
-    # Copy .dll file to the folder where .exe is
+    if(BUILD_WITH_LIBRSTTS)
+      # Copy .dll file to the folder where .exe is
+      add_custom_command(
+          TARGET Dyscover POST_BUILD
+          COMMAND ${CMAKE_COMMAND} -E copy ${LIBRSTTS_DLL_FILE} $<TARGET_FILE_DIR:Dyscover>
+      )
+    endif()
     add_custom_command(
         TARGET Dyscover POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${LIBRSTTS_DLL_FILE} $<TARGET_FILE_DIR:Dyscover>
@@ -158,8 +176,12 @@ if(WIN32)
         COMMENT "Updating TTS data files ..."
     )
 else()
-    link_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/x86_64-pc-linux-gnu)
-    target_link_libraries(Dyscover rstts)
+    if(BUILD_WITH_LIBRSTTS)
+      link_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/x86_64-pc-linux-gnu)
+      target_link_libraries(Dyscover rstts)
+    else()
+      message(STATUS "Skipping linking to librstts on UNIX (BUILD_WITH_LIBRSTTS=OFF)")
+    endif()
 endif()
 
 # Languages

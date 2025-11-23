@@ -16,4 +16,9 @@ Building
 ```
 cmake -S . -B build
 cmake --build build
+
+Optional build toggles (CMake cache options):
+
+- ENABLE_CXX20=ON — allow building the project with C++20 instead of the default C++17. The build will still assert a minimum of C++17 and will fail if the compiler does not support the requested standard.
+- BUILD_WITH_LIBRSTTS=OFF — skip linking and packaging the librstts runtime (useful for CI images or platforms that don't include the prebuilt librstts binary). Default: ON.
 ```
