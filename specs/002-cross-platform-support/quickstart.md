@@ -102,5 +102,111 @@ All resource paths now use the `IResourceLocator` abstraction in `src/platform/R
 
 `ResourceLoader.cpp` functions (`GetSoundFilesPath()`, `GetTTSDataPath()`, `GetTranslationsPath()`, `LoadIcon()`, `LoadSplashBitmap()`) now delegate to ResourceLocator, eliminating direct platform conditionals in callers.
 
+## Audio Volume Control (T061-T071 Complete - US3)
+
+Cross-platform audio volume control is now implemented via `IAudioController` abstraction in `src/platform/AudioController.h`:
+
+### Platform Implementations
+| Platform | Backend | API | Volume Range | Notes |
+|----------|---------|-----|--------------|-------|
+| Windows  | WindowsWaveOut | `waveOutGetVolume`/`waveOutSetVolume` | 0-65535 (native) | Dual-channel volume with MMRESULT error checking |
+| Linux    | PulseAudio / ALSA | libpulse (primary) or ALSA mixer (fallback) | 0-65535 (converted from backend range) | Factory tries PulseAudio → ALSA → Unsupported |
+| macOS    | CoreAudio | `AudioObjectGetPropertyData` (VirtualMasterVolume) | 0-65535 (converted from 0.0-1.0 Float32) | Uses default output device |
+| ChromeOS | Same as Linux | libpulse / ALSA | 0-65535 | May fall back to UnsupportedAudioController in sandboxed scenarios |
+
+### Usage in Application
+```cpp
+// Create controller (typically singleton in AudioLevel.cpp)
+auto controller = CreateAudioController();
+
+// Check if audio control is supported
+if (controller->supported()) {
+    // Get current volume (0-65535, or -1 on error)
+    int volume = controller->getVolume();
+    
+    // Set volume (returns true on success)
+    bool success = controller->setVolume(32768); // Mid-range
+    
+    // Check backend type
+    AudioBackendType backend = controller->backend();
+}
+```
+
+### Backend Selection Logic
+The factory (`CreateAudioController`) uses the following selection logic:
+
+**Windows**: Always uses waveOut API (winmm.lib)
+
+**macOS**: Always uses CoreAudio framework (AudioHardware)
+
+**Linux/ChromeOS**: Multi-backend fallback chain:
+1. **PulseAudio** (if `HAVE_LIBPULSE` defined and libpulse available)
+2. **ALSA Mixer** (if `HAVE_ALSA` defined and ALSA available, controls "Master" element)
+3. **Unsupported** (returns -1 for getVolume, false for setVolume)
+
+### Volume Range Normalization
+All platforms normalize their native volume range to **0-65535**:
+- **Windows waveOut**: Already 0-65535 (WORD range)
+- **ALSA**: Converts from mixer's `snd_mixer_snd_get_playback_volume_range()` to 0-65535
+- **CoreAudio**: Converts from Float32 0.0-1.0 to 0-65535
+
+Applications can use the full 0-65535 range without platform-specific conversions.
+
+### Graceful Degradation
+- If audio hardware is unavailable, `supported()` returns false
+- `getVolume()` returns -1 for unsupported backends
+- `setVolume()` returns false for unsupported backends
+- The `UnsupportedAudioController` provides safe no-op behavior
+
+### Legacy Integration
+`AudioLevel.cpp` functions (`GetAudioVolume()`, `SetAudioVolume()`) now delegate to `IAudioController`, replacing platform-specific `#ifdef` blocks.
+
+### Build Dependencies
+- **Windows**: `winmm.lib` (waveOut API)
+- **macOS**: `CoreAudio.framework`, `AudioToolbox.framework`
+- **Linux**: `libpulse` (optional), `libasound2` (optional)
+
+CMake automatically detects available libraries and defines `HAVE_LIBPULSE` / `HAVE_ALSA` accordingly.
+
+## Integration Testing
+
+Integration tests (`BUILD_INTEGRATION_TESTS=ON`) require physical hardware and are disabled by default:
+
+```bash
+cmake -S . -B build-integration \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DBUILD_TESTS=ON \
+    -DBUILD_INTEGRATION_TESTS=ON
+cmake --build build-integration
+ctest --test-dir build-integration -R integration-
+```
+
+**Available Integration Tests:**
+- `Integration-DeviceDetectionStaticList` — Verifies that at least one supported device is detected on the system
+- `Integration-DeviceIntegration` — Tests hotplug detection with real USB connect/disconnect events
+
+**CI Integration Tests:**
+- Run on self-hosted runners with the `hardware` label
+- Manually triggered via workflow dispatch with `run_integration=true` input
+- Require `INTEGRATION_RUN_TOKEN` repository secret to be configured (security gate)
+- Execute on machines with physical Clevy keyboards attached
+
+For local development, integration tests help verify platform implementations work with real hardware before CI runs.
+
+## Release Status
+
+**Completed User Stories:**
+- ✅ US1: Device Detection (Windows/Linux/macOS/ChromeOS with hotplug)
+- ✅ US2: Keyboard Handling (All platforms with translation tables)
+- ✅ US3: Audio Volume Control (Windows/Linux/macOS/ChromeOS with backend fallback)
+- ✅ US4: Resource Loading (Unified path abstraction)
+
+**Production Readiness:**
+All platform abstractions are implemented and tested. Legacy code remains for backward compatibility but is marked deprecated. Applications should migrate to new abstraction APIs:
+- Device detection: `CreateDeviceDetector()` (replaces `IsClevyKeyboardPresent()`)
+- Keyboard handling: `CreateKeyboardHandler()` (replaces direct `Keyboard*` calls)
+- Audio control: `CreateAudioController()` (replaces direct `AudioLevel` calls)
+- Resource paths: `CreateResourceLocator()` (replaces hardcoded paths)
+
 ## Next Actions
-Complete device detection implementation (US1) or audio controller backends (US3). Keyboard handling (US2) and resource loading (US4) are functional with room for advanced features (AltGr mapping, dead keys, injection).
+All functional development complete. Optional polish tasks remain: logging normalization (T073), performance benchmarks (T074), function refactoring (T075), accessibility checks (T077), packaging adjustments (T079), code style pass (T081).

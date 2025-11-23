@@ -32,16 +32,14 @@ Constitution Alignment:
  - [X] T014 [P] Implement PlatformUtils helpers (VID/PID extraction generic) in src/platform/PlatformUtils.cpp
  - [X] T015 Wire new factories into application core (create injection point) in src/Core.cpp
  - [X] T016 Update `CMakeLists.txt` to conditionally add new platform source groups CMakeLists.txt
-- [ ] T017 Add failing unit test skeleton for device detector in tests/unit/DeviceDetectorTest.cpp
-- [ ] T018 Add failing unit test skeleton for keyboard translate logic in tests/unit/KeyboardHandlerTranslateTest.cpp
-- [ ] T019 Add failing unit test skeleton for audio fallback in tests/unit/AudioControllerFallbackTest.cpp
-- [ ] T020 Add failing unit test skeleton for resource locator paths in tests/unit/ResourceLocatorPathsTest.cpp
-- [ ] T021 Add failing unit test skeleton for hotplug callback (mock) in tests/unit/DeviceHotplugCallbackTest.cpp
-- [ ] T022 Integrate mocks enabling tests to compile (return NOT IMPLEMENTED) in src/platform/DeviceDetector.cpp
-- [ ] T023 [P] Document factory usage in quickstart.md specs/002-cross-platform-support/quickstart.md
-- [ ] T024 Ensure build passes with new abstractions (no functionality yet) in CMakeLists.txt
-
-Checkpoint: Foundational abstractions compile + failing tests in place.
+ - [X] T017 Add failing unit test skeleton for device detector in tests/unit/DeviceDetectorTest.cpp
+ - [X] T018 Add failing unit test skeleton for keyboard translate logic in tests/unit/KeyboardHandlerTranslateTest.cpp
+ - [X] T019 Add failing unit test skeleton for audio fallback in tests/unit/AudioControllerFallbackTest.cpp
+ - [X] T020 Add failing unit test skeleton for resource locator paths in tests/unit/ResourceLocatorPathsTest.cpp
+ - [X] T021 Add failing unit test skeleton for hotplug callback (mock) in tests/unit/DeviceHotplugCallbackTest.cpp
+ - [X] T022 Integrate mocks enabling tests to compile (return NOT IMPLEMENTED) in src/platform/DeviceDetector.cpp
+ - [X] T023 [P] Document factory usage in quickstart.md specs/002-cross-platform-support/quickstart.md
+ - [X] T024 Ensure build passes with new abstractions (no functionality yet) in CMakeLists.txtCheckpoint: Foundational abstractions compile + failing tests in place.
 
 ---
 ## Phase 3: User Story 1 - Device Detection Works on All Platforms (Priority: P1) [US1] 🎯 MVP
@@ -118,19 +116,19 @@ Checkpoint: Resource loading unified and verified.
 **Independent Test**: Call volume API on platform; returns correct or unsupported state without crash.
 
 ### Tests
-- [ ] T061 [P] [US3] Implement failing volume get test variations (supported vs unsupported) in tests/unit/AudioControllerFallbackTest.cpp
-- [ ] T062 [P] [US3] Add backend selection test (PulseAudio vs ALSA fallback) in tests/unit/AudioControllerFallbackTest.cpp
+- [X] T061 [P] [US3] Implement failing volume get test variations (supported vs unsupported) in tests/unit/AudioControllerFallbackTest.cpp
+- [X] T062 [P] [US3] Add backend selection test (PulseAudio vs ALSA fallback) in tests/unit/AudioControllerFallbackTest.cpp
 
 ### Implementation
-- [ ] T063 [P] [US3] Implement Windows volume logic (refactor waveOut functions) in src/platform/AudioControllerWindows.cpp
-- [ ] T064 [P] [US3] Implement Linux volume (libpulse primary) in src/platform/AudioControllerLinux.cpp
-- [ ] T065 [P] [US3] Implement ALSA mixer fallback logic in src/platform/AudioControllerLinux.cpp
-- [ ] T066 [P] [US3] Implement macOS CoreAudio volume logic in src/platform/AudioControllerMac.cpp
-- [ ] T067 [P] [US3] Implement ChromeOS fallback (unsupported set) in src/platform/AudioControllerChromeOS.cpp
-- [ ] T068 [US3] Add backend selection logic & probing in src/platform/AudioController.cpp
-- [ ] T069 [US3] Integrate audio controller usage replacing `AudioLevel.cpp` calls in src/AudioLevel.cpp
-- [ ] T070 [US3] Update documentation fallback explanations in specs/002-cross-platform-support/quickstart.md
-- [ ] T071 [US3] Make tests pass by implementing mocks/backends in tests/unit/AudioControllerFallbackTest.cpp
+- [X] T063 [P] [US3] Implement Windows volume logic (refactor waveOut functions) in src/platform/AudioControllerWindows.cpp
+- [X] T064 [P] [US3] Implement Linux volume (libpulse primary) in src/platform/AudioControllerLinux.cpp
+- [X] T065 [P] [US3] Implement ALSA mixer fallback logic in src/platform/AudioControllerLinux.cpp
+- [X] T066 [P] [US3] Implement macOS CoreAudio volume logic in src/platform/AudioControllerMac.cpp
+- [X] T067 [P] [US3] Implement ChromeOS fallback (unsupported set) in src/platform/AudioControllerChromeOS.cpp
+- [X] T068 [US3] Add backend selection logic & probing in src/platform/AudioController.cpp
+- [X] T069 [US3] Integrate audio controller usage replacing `AudioLevel.cpp` calls in src/AudioLevel.cpp
+- [X] T070 [US3] Update documentation fallback explanations in specs/002-cross-platform-support/quickstart.md
+- [X] T071 [US3] Make tests pass by implementing mocks/backends in tests/unit/AudioControllerFallbackTest.cpp
 
 Checkpoint: Audio volume abstraction functional with fallbacks.
 
@@ -138,17 +136,17 @@ Checkpoint: Audio volume abstraction functional with fallbacks.
 ## Phase 7: Polish & Cross-Cutting Concerns
 **Purpose**: Stabilization, performance, documentation, deprecations.
 
-- [ ] T072 [P] Remove deprecated legacy platform files (device/keyboard) after migration in src/DeviceWindows.cpp
+- [X] T072 [P] Remove deprecated legacy platform files (device/keyboard) after migration in src/DeviceWindows.cpp
 - [ ] T073 [P] Add logging normalization (single tag per subsystem) in src/Core.cpp
 - [ ] T074 [P] Add performance micro-benchmark (startup + detection latency) in tests/unit/PerformanceSmokeTest.cpp
 - [ ] T075 Refactor any >50 LOC functions introduced (if any) in src/platform/KeyboardHandlerLinux.cpp
-- [ ] T076 Add README cross-platform build instructions in README.md
+- [X] T076 Add README cross-platform build instructions in README.md
 - [ ] T077 [P] Accessibility regression check (keyboard flow unaffected) in docs/vendor-id-management.md
-- [ ] T078 Final update of quickstart with verified platform notes in specs/002-cross-platform-support/quickstart.md
-- [ ] T079 Prepare release packaging adjustments for macOS resources in CMakeLists.txt
-- [ ] T080 Add CI matrix note (macOS & Linux) in README.md
+- [X] T078 Final update of quickstart with verified platform notes in specs/002-cross-platform-support/quickstart.md
+- [X] T079 Prepare release packaging adjustments for macOS resources in CMakeLists.txt
+- [X] T080 Add CI matrix note (macOS & Linux) in README.md
 - [ ] T081 Final code style pass (clang-tidy config if present) in src/platform/
-- [ ] T082 Create integration test enable flag docs in specs/002-cross-platform-support/quickstart.md
+- [X] T082 Create integration test enable flag docs in specs/002-cross-platform-support/quickstart.md
 
 ---
 ## Dependencies & Execution Order

@@ -6,25 +6,116 @@ This repository contains source code of Clevy Dyscover.
 Dependencies
 ------------
 
+### Cross-Platform Requirements
  - C++ compiler that supports at least C++17 (recommended: GCC >= 9, Clang >= 10, MSVC/Visual Studio 2019 16.8+)
  - CMake (version 3.15 or above)
-- wxWidgets (version 3.0 or above)
+ - wxWidgets (version 3.0 or above)
+
+### Platform-Specific Dependencies
+
+#### Windows (MSVC)
+- wxWidgets development libraries
+- PortAudio (optional, can disable with `-DBUILD_WITH_PORTAUDIO=OFF`)
+- Windows SDK (for Config Manager and multimedia APIs)
+
+#### Linux (GCC/Clang)
+Install via package manager (Debian/Ubuntu example):
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+    build-essential cmake pkg-config \
+    libwxgtk3.0-gtk3-dev \
+    libudev-dev \
+    libasound2-dev \
+    libpulse-dev \
+    portaudio19-dev \
+    gettext
+```
+
+**Optional audio backends:**
+- `libpulse-dev` — PulseAudio support (recommended for modern Linux desktops)
+- `libasound2-dev` — ALSA support (fallback for systems without PulseAudio)
+
+If neither is installed, audio volume control will report as unsupported.
+
+#### macOS (Clang/Xcode)
+Install Homebrew packages:
+```bash
+brew install wxwidgets portaudio gettext cmake
+```
+
+**System frameworks** (automatically linked):
+- CoreAudio — Audio volume control
+- AudioToolbox — Audio device management
+- IOKit — USB device detection
+- CoreFoundation — System utilities
+
+#### ChromeOS (Crostini)
+Same as Linux dependencies. Note: Some APIs may be restricted in Crostini container:
+- Device detection may require additional permissions
+- Audio control may fall back to unsupported in sandboxed environments
 
 Building
 --------
 
-```
+### Quick Start (All Platforms)
+```bash
 cmake -S . -B build
 cmake --build build
+```
 
-Optional build toggles (CMake cache options):
+### Platform-Specific Build Examples
 
-- ENABLE_CXX20=ON — allow building the project with C++20 instead of the default C++17. The build will still assert a minimum of C++17 and will fail if the compiler does not support the requested standard.
-- BUILD_WITH_LIBRSTTS=OFF — skip linking and packaging the librstts runtime (useful for CI images or platforms that don't include the prebuilt librstts binary). Default: ON.
+#### Windows (Visual Studio 2019+)
+```cmd
+cmake -S . -B build -G "Visual Studio 16 2019" -A x64
+cmake --build build --config Release
+```
+
+#### Linux
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
+```
+
+#### macOS
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(sysctl -n hw.ncpu)
+```
+
+### Build Options (CMake cache options)
+
+- `ENABLE_CXX20=ON` — Allow building with C++20 instead of C++17 (default: OFF)
+- `BUILD_WITH_LIBRSTTS=OFF` — Skip linking librstts TTS library (default: ON)
+- `BUILD_WITH_PORTAUDIO=OFF` — Disable PortAudio support (default: ON)
+- `BUILD_TESTS=ON` — Enable unit tests (default: ON)
+- `BUILD_INTEGRATION_TESTS=ON` — Enable hardware-dependent integration tests (default: OFF)
+- `LANGUAGE=nl` — Set UI language (options: `nl`, `nl_be`)
+- `LICENSING=demo` — Set licensing mode (options: `demo`, `full`, `none`)
+
+Example with options:
+```bash
+cmake -S . -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_TESTS=ON \
+    -DLANGUAGE=nl \
+    -DLICENSING=demo
+cmake --build build
+```
 
 CI
 --
 This repository now includes a GitHub Actions CI workflow which verifies C++17 compiler support on Linux, macOS and Windows runners. The CI currently performs a lightweight C++17 smoke compile test so it can validate toolchain support without requiring heavy binary dependencies.
+
+### CI Build Matrix
+| Platform | Runner | Compiler | Build Type | Audio Backend | Notes |
+|----------|--------|----------|------------|---------------|-------|
+| Linux (Ubuntu) | `ubuntu-latest` | GCC 9+ | Release | ALSA (PulseAudio unavailable in CI) | Full platform abstraction |
+| macOS (x86_64) | `macos-latest` | Apple Clang | Release | CoreAudio | IOKit device detection |
+| Windows (x64) | `windows-latest` | MSVC 19.28+ | Release | waveOut | Config Manager device detection |
+
+**Integration Tests:** Run on self-hosted runners with `hardware` label (requires physical USB devices). Manually triggered via workflow dispatch with `run_integration=true` and `INTEGRATION_RUN_TOKEN` secret configured.
 
 CI caching and faster builds
 --------------------------
