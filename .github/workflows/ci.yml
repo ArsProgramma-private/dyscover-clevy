@@ -1,0 +1,60 @@
+name: CI - C++ Standard Matrix
+
+on:
+  push:
+    branches: [ main, '001-upgrade-cpp17', '**/001-*' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  linux-build:
+    name: Linux build (GCC >= 9)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libudev-dev libwxgtk3.0-gtk3-dev portaudio19-dev gettext
+
+      - name: Configure (C++17)
+        run: |
+          cmake -S . -B build -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF -DENABLE_CXX20=OFF
+
+      - name: Build
+        run: cmake --build build --target Dyscover -j 2
+
+  macos-build:
+    name: macOS build (Clang >= 10)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare Homebrew
+        run: |
+          brew update || true
+          brew install cmake pkg-config wxwidgets portaudio gettext || true
+
+      - name: Configure (C++17)
+        run: |
+          cmake -S . -B build -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF -DENABLE_CXX20=OFF
+
+      - name: Build
+        run: cmake --build build --target Dyscover -j 2
+
+  windows-check:
+    name: Windows compiler check (MSVC >= 2019)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test file
+        run: |
+          echo #include <iostream> > test.cpp
+          echo int main(){ std::cout << __cplusplus << '\n'; return 0; } >> test.cpp
+
+      - name: Compile with MSVC (check C++17)
+        shell: cmd
+        run: |
+          cl /EHsc /std:c++17 test.cpp
