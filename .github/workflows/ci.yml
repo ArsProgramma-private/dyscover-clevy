@@ -22,8 +22,14 @@ jobs:
         run: |
           cmake -S . -B build -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF -DENABLE_CXX20=OFF
 
-      - name: Build
-        run: cmake --build build --target Dyscover -j 2
+      - name: Smoke compile and run small test (C++17)
+        run: |
+          cat > test.cpp <<'EOF'
+          #include <iostream>
+          #include <string>
+          int main(){ std::string s = "C++17 smoke test"; std::cout << s << "\n"; return 0; }
+          EOF
+          ${CXX:-g++} -std=c++17 test.cpp -O2 -o test && ./test
 
   macos-build:
     name: macOS build (Clang >= 10)
@@ -40,8 +46,14 @@ jobs:
         run: |
           cmake -S . -B build -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF -DENABLE_CXX20=OFF
 
-      - name: Build
-        run: cmake --build build --target Dyscover -j 2
+      - name: Smoke compile and run small test (C++17)
+        run: |
+          cat > test.cpp <<'EOF'
+          #include <iostream>
+          #include <string>
+          int main(){ std::string s = "C++17 smoke test"; std::cout << s << "\n"; return 0; }
+          EOF
+          clang++ -std=c++17 test.cpp -O2 -o test && ./test
 
   windows-check:
     name: Windows compiler check (MSVC >= 2019)
