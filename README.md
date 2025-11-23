@@ -25,4 +25,15 @@ Optional build toggles (CMake cache options):
 CI
 --
 This repository now includes a GitHub Actions CI workflow which verifies C++17 compiler support on Linux, macOS and Windows runners. The CI currently performs a lightweight C++17 smoke compile test so it can validate toolchain support without requiring heavy binary dependencies.
+
+Running tests locally
+---------------------
+
+To build and run the unit tests (example uses DeviceStaticListTest):
+
+```bash
+cmake -S . -B build-tests -DBUILD_TESTS=ON
+cmake --build build-tests --target DeviceStaticListTest
+ctest --test-dir build-tests --output-on-failure
+```
 ```

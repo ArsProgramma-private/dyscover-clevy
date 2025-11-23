@@ -25,6 +25,7 @@ docs
 
 # Build results
 [Bb]uild-full/
+[Bb]uild-tests/
 [Bb]uild/
 [Dd]ebug/
 [Dd]ebugPublic/
