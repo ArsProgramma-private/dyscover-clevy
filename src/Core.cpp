@@ -11,6 +11,10 @@
 #include "Core.h"
 #include "Keyboard.h"
 #include "ResourceLoader.h"
+#include "platform/DeviceDetector.h"
+#include "platform/KeyboardHandler.h"
+#include "platform/AudioController.h"
+#include "platform/ResourceLocator.h"
 #include "SoundPlayer.h"
 #include "Speech.h"
 #include "VersionInfo.h"
@@ -19,6 +23,8 @@ Core::Core(App* pApp, Config* pConfig, Device* pDevice)
 {
     m_pApp = pApp;
     m_pConfig = pConfig;
+    // TODO: Integrate platform abstractions (Phase 2 T015)
+    // For now retain legacy keyboard creation while factories evolve.
     m_pKeyboard = Keyboard::Create(this);
     m_pSoundPlayer = new SoundPlayer();
     m_pSpeech = new Speech();
@@ -26,6 +32,47 @@ Core::Core(App* pApp, Config* pConfig, Device* pDevice)
     m_pSpeech->SetVolume(RSTTS_VOLUME_MAX);
 
     m_bKeyboardConnected = pDevice != nullptr ? pDevice->IsClevyKeyboardPresent() : false;
+
+    // Instantiate platform abstractions (factories created in src/platform)
+    // Device detector uses a listener adapter that calls Core's handlers
+    struct DetectorAdapter : public IDeviceDetectorListener {
+        DetectorAdapter(Core* c) : core(c) {}
+        void onDevicePresenceChanged(bool present) override {
+            if (present) core->OnClevyKeyboardConnected();
+            else core->OnClevyKeyboardDisconnected();
+        }
+        Core* core;
+    };
+
+    // Create the actual platform-backed instances. These are currently stubs
+    // and will be replaced with real implementations in later tasks. Keep the
+    // listener owned by Core so it doesn't leak.
+    try {
+        m_pDeviceDetectorListener.reset(new DetectorAdapter(this));
+        m_pDeviceDetector = CreateDeviceDetector(m_pDeviceDetectorListener.get());
+    } catch (...) {
+        // swallow errors during early wiring
+        m_pDeviceDetector.reset();
+        m_pDeviceDetectorListener.reset();
+    }
+
+    try {
+        m_pPlatformKeyboardHandler = CreateKeyboardHandler();
+    } catch (...) {
+        m_pPlatformKeyboardHandler.reset();
+    }
+
+    try {
+        m_pAudioController = CreateAudioController();
+    } catch (...) {
+        m_pAudioController.reset();
+    }
+
+    try {
+        m_pResourceLocator = CreateResourceLocator();
+    } catch (...) {
+        m_pResourceLocator.reset();
+    }
 }
 
 Core::~Core()
@@ -74,12 +121,22 @@ bool Core::OnKeyEvent(Key key, KeyEventType eventType, bool capsLock, bool shift
 
     KeyTranslation translation = TranslateKey(key, capsLock, shift, ctrl, alt, m_pConfig->GetLayout());
 
-    // Send simulated key strokes
+    // Send simulated key strokes (prefer platform handler when available)
     if (eventType == KeyEventType::KeyDown)
     {
         for (KeyStroke ks : translation.keystrokes)
         {
-            m_pKeyboard->SendKeyStroke(ks.key, ks.shift, ks.ctrl, ks.alt);
+            bool sent = false;
+            if (m_pPlatformKeyboardHandler)
+            {
+                // Attempt platform send (currently single key only; modifiers handled implicitly later)
+                sent = m_pPlatformKeyboardHandler->sendKey(ks.key, KeyEventType::KeyDown);
+            }
+            if (!sent)
+            {
+                // Fallback to legacy keyboard multi-key stroke injection
+                m_pKeyboard->SendKeyStroke(ks.key, ks.shift, ks.ctrl, ks.alt);
+            }
         }
     }
 
@@ -144,7 +201,16 @@ bool Core::OnKeyEvent(Key key, KeyEventType eventType, bool capsLock, bool shift
         {
             for (KeyStroke ks : translation.keystrokes)
             {
-                std::string chars = m_pKeyboard->TranslateKeyStroke(ks.key, ks.shift, ks.ctrl);
+                std::string chars;
+                if (m_pPlatformKeyboardHandler)
+                {
+                    KeyModifiers mods; mods.shift = ks.shift; mods.ctrl = ks.ctrl; mods.alt = ks.alt; // altGr unused
+                    chars = m_pPlatformKeyboardHandler->translate(ks.key, mods);
+                }
+                if (chars.empty())
+                {
+                    chars = m_pKeyboard->TranslateKeyStroke(ks.key, ks.shift, ks.ctrl);
+                }
                 m_wordSpeechBuffer.append(chars);
                 m_sentenceSpeechBuffer.append(chars);
             }

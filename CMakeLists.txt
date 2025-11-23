@@ -50,16 +50,48 @@ add_executable(Dyscover WIN32
   src/Speech.h
   src/TrayIcon.cpp
   src/TrayIcon.h
+  # --- Platform abstraction stubs (Phase 1) ---
+  src/platform/DeviceDetector.h
+  src/platform/DeviceDetector.cpp
+  src/platform/KeyboardHandler.h
+  src/platform/KeyboardHandler.cpp
+  src/platform/AudioController.h
+  src/platform/AudioController.cpp
+  src/platform/ResourceLocator.h
+  src/platform/ResourceLocator.cpp
+  src/platform/PlatformUtils.h
+  src/platform/PlatformUtils.cpp
 )
+
+# Ensure the main target can include project headers
+target_include_directories(Dyscover PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# For the main application binary, enable platform-backed detectors/handlers.
+target_compile_definitions(Dyscover PRIVATE __USE_PLATFORM_DETECTOR__)
 
 # Platform-specifics
 if(WIN32)
+  add_compile_definitions(__PLATFORM_WINDOWS__)
   target_sources(Dyscover PRIVATE src/DeviceWindows.cpp src/DeviceWindows.h)
   target_link_libraries(Dyscover PRIVATE cfgmgr32.lib)
   target_sources(Dyscover PRIVATE src/KeyboardWindows.cpp src/KeyboardWindows.h)
+  target_sources(Dyscover PRIVATE src/platform/KeyboardHandlerWindows.cpp)
+  # Add platform detector implementation
+  target_sources(Dyscover PRIVATE src/platform/DeviceDetectorWindows.cpp)
+elseif(APPLE)
+  add_compile_definitions(__PLATFORM_MAC__)
+  # (Future) macOS-specific platform source additions will go here
+  target_sources(Dyscover PRIVATE src/platform/DeviceDetectorMac.cpp)
 elseif(UNIX)
+  add_compile_definitions(__PLATFORM_LINUX__)
+  # Add platform-specific detectors for Linux
+  target_sources(Dyscover PRIVATE src/platform/DeviceDetectorLinux.cpp)
   target_sources(Dyscover PRIVATE src/DeviceLinux.cpp src/DeviceLinux.h)
+    # ChromeOS variant (compiled-in for Linux builds; class is a no-op until wired)
+    target_sources(Dyscover PRIVATE src/platform/DeviceDetectorChromeOS.cpp)
+  # (device detector linux was already added above)
   target_sources(Dyscover PRIVATE src/KeyboardLinux.cpp src/KeyboardLinux.h)
+  target_sources(Dyscover PRIVATE src/platform/KeyboardHandlerLinux.cpp)
 else()
   message(FATAL_ERROR "Unsupported platform")
 endif()
@@ -288,6 +320,103 @@ if(BUILD_TESTS)
     add_executable(DeviceStaticListTest tests/unit/DeviceStaticListTest.cpp)
     target_include_directories(DeviceStaticListTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     add_test(NAME unit-DeviceStaticList COMMAND DeviceStaticListTest)
+  endif()
+  # Unit test skeleton: DeviceDetectorTest (expected to fail until implementation)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/DeviceDetectorTest.cpp")
+    add_executable(DeviceDetectorTest tests/unit/DeviceDetectorTest.cpp)
+    target_include_directories(DeviceDetectorTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    # link platform stub implementation so CreateDeviceDetector is available
+    target_sources(DeviceDetectorTest PRIVATE src/platform/DeviceDetector.cpp)
+    if(UNIX)
+      target_sources(DeviceDetectorTest PRIVATE src/platform/DeviceDetectorLinux.cpp)
+      if(PKG_CONFIG_FOUND)
+        target_include_directories(DeviceDetectorTest PRIVATE ${UDEV_INCLUDE_DIRS})
+        target_link_libraries(DeviceDetectorTest PRIVATE ${UDEV_LIBRARIES})
+      endif()
+    endif()
+    add_test(NAME unit-DeviceDetector COMMAND DeviceDetectorTest)
+  endif()
+  # Unit test skeleton: KeyboardHandlerTranslateTest
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/KeyboardHandlerTranslateTest.cpp")
+    add_executable(KeyboardHandlerTranslateTest tests/unit/KeyboardHandlerTranslateTest.cpp)
+    target_include_directories(KeyboardHandlerTranslateTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_sources(KeyboardHandlerTranslateTest PRIVATE src/platform/KeyboardHandler.cpp)
+    add_test(NAME unit-KeyboardHandlerTranslate COMMAND KeyboardHandlerTranslateTest)
+  endif()
+  # Unit test: KeyboardHandlerLinuxTest (direct platform implementation)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/KeyboardHandlerLinuxTest.cpp")
+    add_executable(KeyboardHandlerLinuxTest tests/unit/KeyboardHandlerLinuxTest.cpp)
+    target_include_directories(KeyboardHandlerLinuxTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    add_test(NAME unit-KeyboardHandlerLinux COMMAND KeyboardHandlerLinuxTest)
+  endif()
+  # Unit test: KeyboardHandlerMacTest (direct platform implementation)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/KeyboardHandlerMacTest.cpp")
+    add_executable(KeyboardHandlerMacTest tests/unit/KeyboardHandlerMacTest.cpp)
+    target_include_directories(KeyboardHandlerMacTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    add_test(NAME unit-KeyboardHandlerMac COMMAND KeyboardHandlerMacTest)
+  endif()
+  # Unit test: KeyboardHandlerChromeOSTest (direct platform implementation)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/KeyboardHandlerChromeOSTest.cpp")
+    add_executable(KeyboardHandlerChromeOSTest tests/unit/KeyboardHandlerChromeOSTest.cpp)
+    target_include_directories(KeyboardHandlerChromeOSTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    add_test(NAME unit-KeyboardHandlerChromeOS COMMAND KeyboardHandlerChromeOSTest)
+  endif()
+  # Unit test skeleton: AudioControllerFallbackTest
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/AudioControllerFallbackTest.cpp")
+    add_executable(AudioControllerFallbackTest tests/unit/AudioControllerFallbackTest.cpp)
+    target_include_directories(AudioControllerFallbackTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_sources(AudioControllerFallbackTest PRIVATE src/platform/AudioController.cpp)
+    add_test(NAME unit-AudioControllerFallback COMMAND AudioControllerFallbackTest)
+  endif()
+  # Unit test skeleton: ResourceLocatorPathsTest
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/ResourceLocatorPathsTest.cpp")
+    add_executable(ResourceLocatorPathsTest tests/unit/ResourceLocatorPathsTest.cpp)
+    target_include_directories(ResourceLocatorPathsTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_sources(ResourceLocatorPathsTest PRIVATE src/platform/ResourceLocator.cpp)
+    target_link_libraries(ResourceLocatorPathsTest PRIVATE ${wxWidgets_LIBRARIES})
+    add_test(NAME unit-ResourceLocatorPaths COMMAND ResourceLocatorPathsTest)
+  endif()
+  # Unit test skeleton: DeviceHotplugCallbackTest
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/DeviceHotplugCallbackTest.cpp")
+    add_executable(DeviceHotplugCallbackTest tests/unit/DeviceHotplugCallbackTest.cpp)
+    target_include_directories(DeviceHotplugCallbackTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_sources(DeviceHotplugCallbackTest PRIVATE src/platform/DeviceDetector.cpp)
+    if(UNIX)
+      target_sources(DeviceHotplugCallbackTest PRIVATE src/platform/DeviceDetectorLinux.cpp)
+      if(PKG_CONFIG_FOUND)
+        target_include_directories(DeviceHotplugCallbackTest PRIVATE ${UDEV_INCLUDE_DIRS})
+        target_link_libraries(DeviceHotplugCallbackTest PRIVATE ${UDEV_LIBRARIES})
+      endif()
+    endif()
+    add_test(NAME unit-DeviceHotplugCallback COMMAND DeviceHotplugCallbackTest)
+  endif()
+  # Unit test skeleton: DeviceDetectorVIDPidTest
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/DeviceDetectorVIDPidTest.cpp")
+    add_executable(DeviceDetectorVIDPidTest tests/unit/DeviceDetectorVIDPidTest.cpp)
+    target_include_directories(DeviceDetectorVIDPidTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_sources(DeviceDetectorVIDPidTest PRIVATE src/platform/DeviceDetector.cpp src/platform/PlatformUtils.cpp)
+    if(UNIX)
+      target_sources(DeviceDetectorVIDPidTest PRIVATE src/platform/DeviceDetectorLinux.cpp)
+      if(PKG_CONFIG_FOUND)
+        target_include_directories(DeviceDetectorVIDPidTest PRIVATE ${UDEV_INCLUDE_DIRS})
+        target_link_libraries(DeviceDetectorVIDPidTest PRIVATE ${UDEV_LIBRARIES})
+      endif()
+    endif()
+    add_test(NAME unit-DeviceDetectorVIDPid COMMAND DeviceDetectorVIDPidTest)
+  endif()
+  # Unit test skeleton: DeviceDetectorHotplugMockTest
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/DeviceDetectorHotplugMockTest.cpp")
+    add_executable(DeviceDetectorHotplugMockTest tests/unit/DeviceDetectorHotplugMockTest.cpp)
+    target_include_directories(DeviceDetectorHotplugMockTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_sources(DeviceDetectorHotplugMockTest PRIVATE src/platform/DeviceDetector.cpp)
+    if(UNIX)
+      target_sources(DeviceDetectorHotplugMockTest PRIVATE src/platform/DeviceDetectorLinux.cpp)
+      if(PKG_CONFIG_FOUND)
+        target_include_directories(DeviceDetectorHotplugMockTest PRIVATE ${UDEV_INCLUDE_DIRS})
+        target_link_libraries(DeviceDetectorHotplugMockTest PRIVATE ${UDEV_LIBRARIES})
+      endif()
+    endif()
+    add_test(NAME unit-DeviceDetectorHotplugMock COMMAND DeviceDetectorHotplugMockTest)
   endif()
   # Integration tests are optional and only enabled with BUILD_INTEGRATION_TESTS=ON
   if(BUILD_INTEGRATION_TESTS)
