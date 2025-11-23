@@ -36,6 +36,73 @@ To speed up CI runs and reduce cross-run build time, our GitHub Actions workflow
 
 If you operate self-hosted runners, consider configuring a persistent ccache directory and a clean caching policy suitable for your runners.
 
+Automated ccache cleanup for self-hosted runners
+------------------------------------------------
+
+To prevent unbounded growth of ccache directories on self-hosted runners, use the provided cleanup script at `scripts/cleanup-ccache.sh`. This script:
+
+- Removes cache files older than a specified age (default: 30 days)
+- Enforces a maximum cache size limit (default: 10GB)
+- Removes empty directories
+- Uses ccache's built-in cleanup if available
+
+Usage:
+
+```bash
+# Use defaults (10GB, 30 days, using $CCACHE_DIR or ~/.ccache)
+./scripts/cleanup-ccache.sh
+
+# Custom location, size, and age
+./scripts/cleanup-ccache.sh /var/cache/ccache 20 14  # 20GB max, 14 days retention
+```
+
+**Automated cleanup via cron** (example — runs daily at 2am):
+
+```bash
+# Add to crontab (crontab -e)
+0 2 * * * /path/to/dyscover-clevy/scripts/cleanup-ccache.sh /var/cache/ccache 10 30 >> /var/log/ccache-cleanup.log 2>&1
+```
+
+**Automated cleanup via systemd timer** (recommended for production):
+
+Create `/etc/systemd/system/ccache-cleanup.service`:
+
+```
+[Unit]
+Description=Clean up ccache directory
+After=network.target
+
+[Service]
+Type=oneshot
+User=runner
+ExecStart=/path/to/dyscover-clevy/scripts/cleanup-ccache.sh /var/cache/ccache 10 30
+StandardOutput=journal
+StandardError=journal
+```
+
+Create `/etc/systemd/system/ccache-cleanup.timer`:
+
+```
+[Unit]
+Description=Daily ccache cleanup timer
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Enable and start the timer:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable ccache-cleanup.timer
+sudo systemctl start ccache-cleanup.timer
+# Check status: sudo systemctl status ccache-cleanup.timer
+```
+
 Cache tuning in CI
 ------------------
 
