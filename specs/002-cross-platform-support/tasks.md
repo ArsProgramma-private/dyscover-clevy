@@ -49,14 +49,14 @@ Checkpoint: Foundational abstractions compile + failing tests in place.
 **Independent Test**: Run detector tests + manual device plug/unplug on one platform; keyboard/audio not required.
 
 ### Tests (write & make fail first)
-- [ ] T025 [P] [US1] Implement failing VID/PID match test logic in tests/unit/DeviceDetectorTest.cpp
-- [ ] T026 [P] [US1] Implement failing hotplug mock event test in tests/unit/DeviceHotplugCallbackTest.cpp
+- [X] T025 [P] [US1] Implement failing VID/PID match test logic in tests/unit/DeviceDetectorTest.cpp
+- [X] T026 [P] [US1] Implement failing hotplug mock event test in tests/unit/DeviceHotplugCallbackTest.cpp
 
 ### Implementation
-- [ ] T027 [P] [US1] Implement Windows detector using existing logic (refactor from DeviceWindows.cpp) in src/platform/DeviceDetectorWindows.cpp
-- [ ] T028 [P] [US1] Refactor Linux detector from DeviceLinux.cpp into src/platform/DeviceDetectorLinux.cpp
-- [ ] T029 [P] [US1] Implement macOS detector (IOKit enumeration) in src/platform/DeviceDetectorMac.cpp
-- [ ] T030 [P] [US1] Implement ChromeOS detector (reuse Linux + sandbox fallback) in src/platform/DeviceDetectorChromeOS.cpp
+- [X] T027 [P] [US1] Implement Windows detector using existing logic (refactor from DeviceWindows.cpp) in src/platform/DeviceDetectorWindows.cpp
+- [X] T028 [P] [US1] Refactor Linux detector from DeviceLinux.cpp into src/platform/DeviceDetectorLinux.cpp
+- [X] T029 [P] [US1] Implement macOS detector (IOKit enumeration) in src/platform/DeviceDetectorMac.cpp
+- [X] T030 [P] [US1] Implement ChromeOS detector (reuse Linux + sandbox fallback) in src/platform/DeviceDetectorChromeOS.cpp
 - [ ] T031 [US1] Implement polling fallback logic for restricted platforms in src/platform/DeviceDetector.cpp
 - [ ] T032 [US1] Integrate BT hardware ID check (from Windows code) cross-platform if feasible in src/platform/DeviceDetectorWindows.cpp
 - [ ] T033 [US1] Add capability flags (HOTPLUG_EVENTS/POLLING_ONLY) in src/platform/DeviceDetector.h

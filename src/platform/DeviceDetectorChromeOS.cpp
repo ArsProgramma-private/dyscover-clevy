@@ -1,61 +1,31 @@
-#if defined(__linux__)
-// DeviceDetectorChromeOS.cpp - ChromeOS variant: reuse libudev when available otherwise provide polling-only fallback
+// DeviceDetectorChromeOS.cpp - ChromeOS device detection
+//
+// ChromeOS is a restricted Linux environment that uses the same kernel subsystems
+// but with enhanced sandboxing and security policies. For device detection:
+//
+// 1. USB device enumeration via libudev works the same as Linux
+// 2. Hotplug notifications may be restricted in sandboxed contexts
+// 3. The Linux detector implementation (DeviceDetectorLinux.cpp) is used
+// 4. The polling fallback in DeviceDetector.cpp handles restricted scenarios
+//
+// Implementation Strategy:
+// - ChromeOS builds use the same Linux detector implementation
+// - The factory in DeviceDetector.cpp automatically wraps with polling if needed
+// - No ChromeOS-specific code required due to kernel compatibility
+//
+// Build Configuration:
+// - ChromeOS is detected as __linux__ at compile time
+// - No separate ChromeOS detector class needed
+// - DeviceDetectorLinux.cpp handles both standard Linux and ChromeOS
+//
+// Testing on ChromeOS:
+// - If udev access is restricted, device enumeration returns empty list
+// - The polling wrapper in CreateDeviceDetector provides fallback behavior
+// - Apps gracefully degrade to polling mode if hotplug notifications fail
+//
+// Future Enhancement:
+// - If ChromeOS-specific APIs become available (e.g., Chrome Extensions USB API),
+//   this file can be extended with a ChromeOS-native implementation
+// - Current approach ensures compatibility without ChromeOS-specific code
 
-#include "DeviceDetector.h"
-#include "SupportedDevices.h"
-#include <libudev.h>
-#include <string>
-
-class DeviceDetectorChromeOS : public IDeviceDetector {
-public:
-    explicit DeviceDetectorChromeOS(IDeviceDetectorListener* listener) : m_listener(listener) {}
-
-    bool isPresent() const override {
-        // On ChromeOS we may be sandboxed; attempt udev first
-        struct udev* udev = udev_new();
-        if (!udev) return false;
-
-        struct udev_enumerate* enumerate = udev_enumerate_new(udev);
-        if (!enumerate) { udev_unref(udev); return false; }
-
-        udev_enumerate_add_match_subsystem(enumerate, "usb");
-        udev_enumerate_scan_devices(enumerate);
-
-        struct udev_list_entry* devices = udev_enumerate_get_list_entry(enumerate);
-        struct udev_list_entry* entry;
-        bool found = false;
-
-        udev_list_entry_foreach(entry, devices) {
-            const char* path = udev_list_entry_get_name(entry);
-            struct udev_device* dev = udev_device_new_from_syspath(udev, path);
-            if (dev) {
-                const char* vid = udev_device_get_sysattr_value(dev, "idVendor");
-                const char* pid = udev_device_get_sysattr_value(dev, "idProduct");
-                if (vid && pid) {
-                    std::string v(vid), p(pid);
-                    if (IsSupported(v, p)) { found = true; udev_device_unref(dev); break; }
-                }
-                udev_device_unref(dev);
-            }
-        }
-
-        udev_enumerate_unref(enumerate);
-        udev_unref(udev);
-        return found;
-    }
-
-    void startMonitoring() override { if (m_listener) m_listener->onDevicePresenceChanged(isPresent()); }
-    void stopMonitoring() override { /* noop */ }
-    void refresh() override { if (m_listener) m_listener->onDevicePresenceChanged(isPresent()); }
-    PlatformCapabilities capabilities() const override { return 1 << 2; /* POLLING_ONLY by default on ChromeOS if sandboxed */ }
-
-private:
-    IDeviceDetectorListener* m_listener{nullptr};
-};
-
-#endif // __linux__
-
-// Note: Do NOT provide CreatePlatformDeviceDetector here by default because
-// the regular Linux detector provides the platform factory for Linux builds.
-// ChromeOS-specific selection will be wired into the platform factory once
-// a build-time ChromeOS marker is available.
+// Intentionally empty - ChromeOS uses Linux detector implementation

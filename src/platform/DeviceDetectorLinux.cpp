@@ -1,131 +1,189 @@
-#if defined(__linux__)
-// DeviceDetectorLinux.cpp - platform-specific device enumeration using libudev
-
-#include "DeviceDetector.h"
-#include "SupportedDevices.h"
-#include <libudev.h>
-#include <string>
-
-class DeviceDetectorLinux : public IDeviceDetector {
-public:
-    explicit DeviceDetectorLinux(IDeviceDetectorListener* listener) : m_listener(listener) {}
-    bool isPresent() const override {
-        struct udev* udev = udev_new();
-        if (!udev) return false;
-
-        struct udev_enumerate* enumerate = udev_enumerate_new(udev);
-        if (!enumerate) { udev_unref(udev); return false; }
-
-        udev_enumerate_add_match_subsystem(enumerate, "usb");
-        udev_enumerate_scan_devices(enumerate);
-
-        struct udev_list_entry* devices = udev_enumerate_get_list_entry(enumerate);
-        struct udev_list_entry* entry;
-        bool found = false;
-
-        udev_list_entry_foreach(entry, devices) {
-            const char* path = udev_list_entry_get_name(entry);
-            struct udev_device* dev = udev_device_new_from_syspath(udev, path);
-            if (dev) {
-                const char* vid = udev_device_get_sysattr_value(dev, "idVendor");
-                const char* pid = udev_device_get_sysattr_value(dev, "idProduct");
-                if (vid && pid) {
-                    std::string v(vid), p(pid);
-                    if (IsSupported(v, p)) { found = true; udev_device_unref(dev); break; }
-                }
-                udev_device_unref(dev);
-            }
-        }
-
-        udev_enumerate_unref(enumerate);
-        udev_unref(udev);
-        return found;
-    }
-
-    void startMonitoring() override { if (m_listener) m_listener->onDevicePresenceChanged(isPresent()); }
-    void stopMonitoring() override { /* noop for now */ }
-    void refresh() override { if (m_listener) m_listener->onDevicePresenceChanged(isPresent()); }
-    PlatformCapabilities capabilities() const override { return 1 << 0; /* HOTPLUG_EVENTS for Linux */ }
-
-private:
-    IDeviceDetectorListener* m_listener{nullptr};
-};
-
-// Factory for platform builds
-std::unique_ptr<IDeviceDetector> CreatePlatformDeviceDetector(IDeviceDetectorListener* listener) {
-    return std::unique_ptr<IDeviceDetector>(new DeviceDetectorLinux(listener));
-}
-
-#endif // __linux__
-#if defined(__PLATFORM_LINUX__)
+#if defined(__linux__) && !defined(__ANDROID__)
+// DeviceDetectorLinux.cpp - Linux device detection using libudev
+// Refactored from DeviceLinux.cpp to support platform abstraction layer
 
 #include "DeviceDetector.h"
 #include "../SupportedDevices.h"
 #include <libudev.h>
+#include <atomic>
+#include <thread>
 #include <string>
+#include <cstring>
+#include <chrono>
 
 namespace {
+    constexpr PlatformCapabilities HOTPLUG_EVENTS = 1 << 0;
 
-class LinuxDeviceDetector : public IDeviceDetector {
-public:
-    explicit LinuxDeviceDetector(IDeviceDetectorListener* listener) : m_listener(listener) {}
+    // Linux device detector implementation using libudev
+    class LinuxDeviceDetector : public IDeviceDetector {
+    public:
+        explicit LinuxDeviceDetector(IDeviceDetectorListener* listener)
+            : m_listener(listener),
+              m_udev(nullptr),
+              m_monitor(nullptr),
+              m_monitorFd(-1),
+              m_monitoring(false)
+        {
+            m_udev = udev_new();
+            if (!m_udev) {
+                // Log error but continue - isPresent() will return false
+                return;
+            }
 
-    bool isPresent() const override {
-        // Enumerate USB devices using libudev and match against SupportedDevices
-        struct udev* udev = udev_new();
-        if (!udev) return false;
+            // Initialize device presence state
+            refresh();
+        }
 
-        struct udev_enumerate* enumerate = udev_enumerate_new(udev);
-        if (!enumerate) { udev_unref(udev); return false; }
-
-        udev_enumerate_add_match_subsystem(enumerate, "usb");
-        udev_enumerate_scan_devices(enumerate);
-
-        struct udev_list_entry* devices = udev_enumerate_get_list_entry(enumerate);
-        struct udev_list_entry* entry;
-
-        bool found = false;
-        udev_list_entry_foreach(entry, devices) {
-            const char* path = udev_list_entry_get_name(entry);
-            struct udev_device* dev = udev_device_new_from_syspath(udev, path);
-            if (dev) {
-                const char* vid = udev_device_get_sysattr_value(dev, "idVendor");
-                const char* pid = udev_device_get_sysattr_value(dev, "idProduct");
-                if (vid && pid) {
-                    std::string v(vid), p(pid);
-                    if (IsSupported(v, p)) {
-                        found = true;
-                        udev_device_unref(dev);
-                        break;
-                    }
-                }
-                udev_device_unref(dev);
+        ~LinuxDeviceDetector() override {
+            stopMonitoring();
+            if (m_udev) {
+                udev_unref(m_udev);
             }
         }
 
-        udev_enumerate_unref(enumerate);
-        udev_unref(udev);
-        return found;
-    }
-
-    void startMonitoring() override {
-        // Minimal implementation for tests: notify listener of current state once
-        if (m_listener) {
-            m_listener->onDevicePresenceChanged(isPresent());
+        bool isPresent() const override {
+            return m_present.load();
         }
-    }
-    void stopMonitoring() override { /* no-op */ }
-    void refresh() override { /* no-op */ }
-    PlatformCapabilities capabilities() const override { return 1 << 0; /* HOTPLUG_EVENTS */ }
 
-private:
-    IDeviceDetectorListener* m_listener{nullptr};
-};
+        void startMonitoring() override {
+            if (m_monitoring.load() || !m_udev) return;
 
-} // anonymous
+            // Create udev monitor for USB subsystem hotplug events
+            m_monitor = udev_monitor_new_from_netlink(m_udev, "udev");
+            if (!m_monitor) {
+                // Fallback to basic presence check
+                if (m_listener) {
+                    m_listener->onDevicePresenceChanged(m_present.load());
+                }
+                return;
+            }
 
-std::unique_ptr<IDeviceDetector> CreateDeviceDetector_Linux(IDeviceDetectorListener* listener) {
+            udev_monitor_filter_add_match_subsystem_devtype(m_monitor, "usb", nullptr);
+            udev_monitor_enable_receiving(m_monitor);
+            m_monitorFd = udev_monitor_get_fd(m_monitor);
+
+            m_monitoring = true;
+
+            // Notify listener of initial state
+            if (m_listener) {
+                m_listener->onDevicePresenceChanged(m_present.load());
+            }
+
+            // Start monitoring thread
+            m_monitorThread = std::thread([this]() {
+                while (m_monitoring.load()) {
+                    // Poll with timeout to allow graceful shutdown
+                    fd_set fds;
+                    struct timeval tv;
+                    int ret;
+
+                    FD_ZERO(&fds);
+                    FD_SET(m_monitorFd, &fds);
+                    tv.tv_sec = 0;
+                    tv.tv_usec = 500000; // 500ms timeout
+
+                    ret = select(m_monitorFd + 1, &fds, nullptr, nullptr, &tv);
+                    
+                    if (ret > 0 && FD_ISSET(m_monitorFd, &fds)) {
+                        // Device event received - process it
+                        struct udev_device* dev = udev_monitor_receive_device(m_monitor);
+                        if (dev) {
+                            // Check if it's a supported device being added/removed
+                            const char* action = udev_device_get_action(dev);
+                            if (action && (strcmp(action, "add") == 0 || strcmp(action, "remove") == 0)) {
+                                refresh(); // Re-scan device list and notify if changed
+                            }
+                            udev_device_unref(dev);
+                        }
+                    }
+                }
+            });
+        }
+
+        void stopMonitoring() override {
+            if (!m_monitoring.load()) return;
+
+            m_monitoring = false;
+
+            // Wait for monitoring thread to exit
+            if (m_monitorThread.joinable()) {
+                m_monitorThread.join();
+            }
+
+            // Clean up monitor
+            if (m_monitor) {
+                udev_monitor_unref(m_monitor);
+                m_monitor = nullptr;
+                m_monitorFd = -1;
+            }
+        }
+
+        void refresh() override {
+            if (!m_udev) {
+                m_present = false;
+                return;
+            }
+
+            // Enumerate USB devices and check for supported VID/PID
+            struct udev_enumerate* enumerate = udev_enumerate_new(m_udev);
+            if (!enumerate) {
+                return;
+            }
+
+            udev_enumerate_add_match_subsystem(enumerate, "usb");
+            udev_enumerate_scan_devices(enumerate);
+
+            struct udev_list_entry* devices = udev_enumerate_get_list_entry(enumerate);
+            struct udev_list_entry* entry;
+
+            bool found = false;
+            udev_list_entry_foreach(entry, devices) {
+                const char* path = udev_list_entry_get_name(entry);
+                struct udev_device* dev = udev_device_new_from_syspath(m_udev, path);
+                if (dev) {
+                    const char* vid = udev_device_get_sysattr_value(dev, "idVendor");
+                    const char* pid = udev_device_get_sysattr_value(dev, "idProduct");
+                    if (vid && pid) {
+                        std::string v(vid), p(pid);
+                        if (IsSupported(v, p)) {
+                            found = true;
+                            udev_device_unref(dev);
+                            break;
+                        }
+                    }
+                    udev_device_unref(dev);
+                }
+            }
+
+            udev_enumerate_unref(enumerate);
+
+            bool oldPresence = m_present.exchange(found);
+            
+            // Notify listener if state changed and monitoring is active
+            if (m_monitoring.load() && m_listener && (oldPresence != found)) {
+                m_listener->onDevicePresenceChanged(found);
+            }
+        }
+
+        PlatformCapabilities capabilities() const override {
+            return HOTPLUG_EVENTS; // Linux supports native hotplug via udev monitor
+        }
+
+    private:
+        IDeviceDetectorListener* m_listener;
+        struct udev* m_udev;
+        struct udev_monitor* m_monitor;
+        int m_monitorFd;
+        std::atomic<bool> m_present{false};
+        std::atomic<bool> m_monitoring{false};
+        std::thread m_monitorThread;
+    };
+
+} // anonymous namespace
+
+// Platform-specific factory function for Linux
+std::unique_ptr<IDeviceDetector> CreatePlatformDeviceDetector(IDeviceDetectorListener* listener) {
     return std::unique_ptr<IDeviceDetector>(new LinuxDeviceDetector(listener));
 }
 
-#endif // __PLATFORM_LINUX__
+#endif // __linux__ && !__ANDROID__
