@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstdio> // for tmpnam
+#include <unistd.h> // for close() and mkstemp()
 
 void testHexValidation() {
     DeviceConfig config;

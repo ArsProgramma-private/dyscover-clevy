@@ -20,6 +20,7 @@ inline constexpr SupportedDevice SUPPORTED_DEVICES[] = {
 
 #include <string>
 #include <algorithm>
+#include <cctype>
 
 inline std::string NormalizeHex4(const std::string& in)
 {

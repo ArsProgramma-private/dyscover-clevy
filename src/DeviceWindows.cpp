@@ -98,7 +98,19 @@ bool DeviceWindows::DoesContainClevyKeyboard(DEVINST hDevice)
 
 bool DeviceWindows::extractVidPid(const TCHAR* hardwareId, std::string& vid, std::string& pid)
 {
-    std::string hid = hardwareId;
+    // Convert TCHAR* to std::string properly
+    #ifdef UNICODE
+        // Convert wide string to narrow string
+        int size_needed = WideCharToMultiByte(CP_UTF8, 0, hardwareId, -1, nullptr, 0, nullptr, nullptr);
+        if (size_needed <= 0) {
+            return false;
+        }
+        std::string hid(size_needed - 1, 0);
+        WideCharToMultiByte(CP_UTF8, 0, hardwareId, -1, &hid[0], size_needed, nullptr, nullptr);
+    #else
+        std::string hid = hardwareId;
+    #endif
+    
     size_t vidPos = hid.find("VID_");
     if (vidPos != std::string::npos) {
         vid = hid.substr(vidPos + 4, 4);
