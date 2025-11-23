@@ -8,7 +8,7 @@
 
 static void testNormalize() {
     assert(NormalizeHex4("04b4") == "04B4");
-    assert(NormalizeHex4("4b4") == "4B40"); // padded
+    assert(NormalizeHex4("4b4") == "04B4"); // left-padded with zero
     assert(NormalizeHex4("04B4AA") == "04B4"); // truncated
 }
 

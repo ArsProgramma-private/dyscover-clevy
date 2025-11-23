@@ -2,6 +2,7 @@
 // DeviceWindows.cpp
 //
 
+#include <windows.h>
 #include <wx/log.h>
 
 #include "DeviceWindows.h"
