@@ -23,6 +23,16 @@ ctest --test-dir build -R unit-
 ```
 (Add new tests similarly.)
 
+### Permissions & Injection Notes (T053)
+| Platform | Interception | Injection (sendKey) | Notes |
+|----------|--------------|---------------------|-------|
+| Windows  | Planned (low-level hook) | Supported (SendInput) | Alt+Shift mapping example implemented; extended layouts pending. |
+| macOS    | Requires Accessibility permission (CGEventTap) | Not yet implemented (returns false) | If permission denied, handler degrades gracefully. |
+| Linux    | Interception pending (evdev) | Partial (fallback only) | Layout via xkbcommon when available; AltGr symbols not yet mapped. |
+| ChromeOS | Disabled (sandbox limits) | Disabled (returns false) | Handler reports Denied; translation deterministic only. |
+
+If interception/injection is unavailable or denied, the application falls back to legacy key processing or skips the action without crashing. Update platform notes in release documentation after enabling new capabilities.
+
 ## Adding macOS Support
 - Ensure Homebrew packages: `brew install wxwidgets portaudio gettext`.
 - Pass `-DLANGUAGE=nl` etc. as before.

@@ -5,6 +5,7 @@
 #include <cassert>
 
 #include "KeyboardWindows.h"
+#include "platform/KeyboardHandler.h" // leverage new abstraction for translation
 
 KeyboardWindows* g_pInstance = nullptr;
 
@@ -69,27 +70,30 @@ LRESULT CALLBACK KeyboardWindows::LowLevelKeyboardProc(int nCode, WPARAM wParam,
 
 std::string KeyboardWindows::TranslateKeyStroke(Key key, bool shift, bool ctrl)
 {
-    int vkCode = KeyCodeFromKey(key);
+    // Deprecated direct translation logic: delegate to platform handler abstraction.
+    // Falls back to legacy method if factory is unavailable (should not happen post T043).
+    static std::unique_ptr<IKeyboardHandler> s_platformHandler; // lazy init to avoid order issues
+    if (!s_platformHandler) {
+        try { s_platformHandler = CreateKeyboardHandler(); } catch (...) { /* ignore */ }
+    }
+    if (s_platformHandler) {
+        KeyModifiers mods; mods.shift = shift; mods.ctrl = ctrl; // alt false here
+        std::string t = s_platformHandler->translate(key, mods);
+        if (!t.empty()) return t;
+    }
 
-    // Check if keystroke is a dead key/diacritic.
-    // This is needed because ToAscii() modifies the keyboard state and effectively kills diacritics.
-    // https://stackoverflow.com/questions/1964614/toascii-tounicode-in-a-keyboard-hook-destroys-dead-keys
+    // Fallback: retain minimal previous behavior for dead key safety
+    int vkCode = KeyCodeFromKey(key);
     UINT mapped = MapVirtualKey(vkCode, MAPVK_VK_TO_CHAR);
     if (mapped >> (sizeof(UINT) * 8 - 1) & 1)  return std::string();
-
     BYTE keyboardState[256];
     if (GetKeyboardState(keyboardState) == 0)  return std::string();
-
     keyboardState[VK_SHIFT] = shift ? 0xFF : 0x00;
     keyboardState[VK_CONTROL] = ctrl ? 0xFF : 0x00;
-
     WORD charBuffer[10];
     ZeroMemory(charBuffer, sizeof(charBuffer));
-
-    // TODO: Use ToUnicode().
     int result = ToAscii(vkCode, 0, keyboardState, charBuffer, 0);
-    if (result < 0)  return std::string();
-
+    if (result <= 0) return std::string();
     return std::string(reinterpret_cast<char*>(&charBuffer[0]));
 }
 

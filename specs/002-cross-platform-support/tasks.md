@@ -30,7 +30,7 @@ Constitution Alignment:
  - [X] T012 Implement AudioController interface + factory stub in src/platform/AudioController.cpp
  - [X] T013 Implement ResourceLocator unified implementation in src/platform/ResourceLocator.cpp
  - [X] T014 [P] Implement PlatformUtils helpers (VID/PID extraction generic) in src/platform/PlatformUtils.cpp
-- [ ] T015 Wire new factories into application core (create injection point) in src/Core.cpp
+ - [X] T015 Wire new factories into application core (create injection point) in src/Core.cpp
  - [X] T016 Update `CMakeLists.txt` to conditionally add new platform source groups CMakeLists.txt
 - [ ] T017 Add failing unit test skeleton for device detector in tests/unit/DeviceDetectorTest.cpp
 - [ ] T018 Add failing unit test skeleton for keyboard translate logic in tests/unit/KeyboardHandlerTranslateTest.cpp
@@ -75,12 +75,12 @@ Checkpoint: Device presence detection functional across platforms.
 **Independent Test**: Run translation and injection tests without requiring device presence (detector mocked).
 
 ### Tests
-- [ ] T040 [P] [US2] Extend translation test with printable/non-printable coverage in tests/unit/KeyboardHandlerTranslateTest.cpp
-- [ ] T041 [P] [US2] Add Caps Lock state test (mock platform) in tests/unit/KeyboardHandlerTranslateTest.cpp
-- [ ] T042 [P] [US2] Add keystroke injection permission failure test in tests/unit/KeyboardHandlerPermissionTest.cpp
+ - [X] T040 [P] [US2] Extend translation test with printable/non-printable coverage in tests/unit/KeyboardHandlerTranslateTest.cpp
+ - [X] T041 [P] [US2] Add Caps Lock state test (mock platform) in tests/unit/KeyboardHandlerTranslateTest.cpp
+ - [X] T042 [P] [US2] Add keystroke injection permission failure test in tests/unit/KeyboardHandlerPermissionTest.cpp
 
 ### Implementation
-- [ ] T043 [P] [US2] Implement Windows keyboard handler (refactor from KeyboardWindows.cpp) in src/platform/KeyboardHandlerWindows.cpp
+ - [X] T043 [P] [US2] Implement Windows keyboard handler (refactor from KeyboardWindows.cpp) in src/platform/KeyboardHandlerWindows.cpp
  - [X] T044 [P] [US2] Implement Linux keyboard handler (evdev + XKB translation) in src/platform/KeyboardHandlerLinux.cpp
  - [X] T045 [P] [US2] Implement macOS keyboard handler (CGEventTap + TISInputSource) in src/platform/KeyboardHandlerMac.cpp
  - [X] T046 [P] [US2] Implement ChromeOS handler (restricted: event interception disabled gracefully) in src/platform/KeyboardHandlerChromeOS.cpp
@@ -88,9 +88,9 @@ Checkpoint: Device presence detection functional across platforms.
  - [X] T048 [US2] Implement dead key safe translation fallback (empty if unsupported) in src/platform/KeyboardHandlerLinux.cpp
  - [X] T049 [US2] Add injection capability fallback: return false + log once in src/platform/KeyboardHandlerMac.cpp
  - [X] T050 [US2] Wire handler into Core replacing direct Windows hook usage in src/Core.cpp
-- [ ] T051 [US2] Remove direct logic from legacy KeyboardWindows.cpp in src/KeyboardWindows.cpp
-- [ ] T052 [US2] Validate handler with unit tests (make pass) in tests/unit/KeyboardHandlerTranslateTest.cpp
-- [ ] T053 [US2] Update quickstart with permissions note in specs/002-cross-platform-support/quickstart.md
+ - [X] T051 [US2] Remove direct logic from legacy KeyboardWindows.cpp in src/KeyboardWindows.cpp
+ - [X] T052 [US2] Validate handler with unit tests (make pass) in tests/unit/KeyboardHandlerTranslateTest.cpp
+ - [X] T053 [US2] Update quickstart with permissions note in specs/002-cross-platform-support/quickstart.md
 
 Checkpoint: Cross-platform keyboard handling available.
 

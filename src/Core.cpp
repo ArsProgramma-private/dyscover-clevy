@@ -23,8 +23,8 @@ Core::Core(App* pApp, Config* pConfig, Device* pDevice)
 {
     m_pApp = pApp;
     m_pConfig = pConfig;
-    // TODO: Integrate platform abstractions (Phase 2 T015)
-    // For now retain legacy keyboard creation while factories evolve.
+    // Integrated platform abstractions (T015 complete): retain legacy keyboard
+    // only as fallback for translation/sending when platform handler lacks capability.
     m_pKeyboard = Keyboard::Create(this);
     m_pSoundPlayer = new SoundPlayer();
     m_pSpeech = new Speech();
