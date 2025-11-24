@@ -55,7 +55,7 @@ jobs:
             "dependencies": [
               {
                 "name": "wxwidgets",
-                "features": ["core", "debug-support", "sound"]
+                "features": ["sound"]
               },
               "portaudio",
               "gettext"

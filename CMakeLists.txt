@@ -117,7 +117,7 @@ elseif(APPLE)
   find_library(COREAUDIO_LIBRARY CoreAudio REQUIRED)
   find_library(AUDIOTOOLBOX_LIBRARY AudioToolbox REQUIRED)
   target_link_libraries(Dyscover PRIVATE ${COREAUDIO_LIBRARY} ${AUDIOTOOLBOX_LIBRARY})
-elseif(UNIX)
+elseif(UNIX AND NOT APPLE)
   add_compile_definitions(__PLATFORM_LINUX__)
   # Add platform-specific detectors for Linux
   target_sources(Dyscover PRIVATE src/platform/DeviceDetectorLinux.cpp)
