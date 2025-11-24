@@ -96,8 +96,6 @@ jobs:
 
       - name: Configure & Build
         shell: powershell
-        env:
-          X_VCPKG_ASSET_SOURCES: "x-azurl,https://github.com,,,readwrite"
         run: |
           # Retry CMake configure up to 3 times to handle transient CDN errors
           $maxRetries = 3
