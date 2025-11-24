@@ -130,6 +130,48 @@ Artifacts available after each CI run:
 
 Future: Automated signature chain verification and SBOM diff analysis on PRs.
 
+### Release Builds
+The repository includes an automated release workflow (`.github/workflows/release.yml`) that triggers on version tags or manual dispatch:
+
+**Trigger Options:**
+- **Automatic:** Push a tag matching `v*.*.*` (e.g., `v4.0.5.0`)
+- **Manual:** Use "Run workflow" with version input via Actions tab
+
+**Build Matrix:** Builds for all language/licensing combinations:
+- Windows: Inno Setup installers + ZIP archives (x64)
+- macOS: Signed DMG packages + .app bundles (Universal: x86_64 + arm64)
+- Linux: DEB, RPM, and TGZ packages
+
+**Automated Tasks:**
+- vcpkg dependency management (Windows)
+- Binary hardening verification (all platforms)
+- Dependency audit with SHA256 provenance
+- SBOM generation (Linux/macOS)
+- Code signing: Authenticode (Windows), codesign + notarization (macOS)
+- Debug symbols packaging (separate artifacts)
+- SHA256SUMS.txt generation
+- Draft GitHub Release with all artifacts
+
+**Required Secrets** (configure in repository settings → Secrets and variables → Actions):
+- `WINDOWS_SIGNING_CERT`: Base64-encoded PFX certificate
+- `WINDOWS_SIGNING_PASSWORD`: Certificate password
+- `APPLE_SIGNING_IDENTITY`: e.g., "Developer ID Application: Company Name (TEAMID)"
+- `APPLE_NOTARY_KEY_ID`: App Store Connect API key ID
+- `APPLE_NOTARY_ISSUER`: App Store Connect issuer UUID
+- `APPLE_NOTARY_KEY_FILE`: App Store Connect private key (.p8 file contents)
+
+**Creating a Release:**
+```bash
+# Tag and push
+git tag v4.0.5.0
+git push origin v4.0.5.0
+
+# Or trigger manually via GitHub Actions UI
+# Navigate to Actions → Release Build & Package → Run workflow
+```
+
+Release artifacts include installers for all platform/language/licensing combinations, with separate uploads for SBOM and debug symbols.
+
 CI caching and faster builds
 --------------------------
 
