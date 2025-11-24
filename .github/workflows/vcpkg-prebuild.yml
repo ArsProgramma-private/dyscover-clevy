@@ -82,6 +82,21 @@ jobs:
             vcpkg/buildtrees
           key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
 
+      - name: Save canonical (fallback) vcpkg cache
+        # Also save a canonical cache that only depends on the pinned vcpkg commit
+        # and runner.os. This allows release/tag builds on different refs to
+        # reuse a recent prebuild when the versions/** hash does not match.
+        uses: actions/cache@v4
+        with:
+          path: |
+            vcpkg/installed
+            vcpkg/packages
+            vcpkg/buildtrees
+          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a
+          restore-keys: |
+            vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-
+            vcpkg-${{ runner.os }}-
+
       - name: Upload some cache manifest
         uses: actions/upload-artifact@v4
         with:
