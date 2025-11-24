@@ -98,79 +98,76 @@ jobs:
             vcpkg-${{ runner.os }}-
 
       - name: Trigger prebuild and wait when cache-miss
+        id: trigger-prebuild
         if: steps.vcpkg-cache-restore.outputs.cache-hit != 'true'
         uses: actions/github-script@v7
         with:
           script: |
-            // Workflow file name to dispatch
+            // Instead of dispatching prebuild, download the artifact from the latest prebuild run
+            const artifactName = 'vcpkg-prebuild-win'
             const wf = 'vcpkg-prebuild.yml'
-
-            // Figure out which ref to dispatch to:
-            // - If the current run is on a tag (refs/tags/...), dispatch on that tag so the workflow file at the same commit is used.
-            // - Otherwise dispatch on the current branch (refs/heads/...) or fall back to 'main'.
-            let ref = 'main'
-            if (context.ref && context.ref.startsWith('refs/tags/')) {
-              ref = context.ref.replace('refs/tags/', '')
-            } else if (context.ref && context.ref.startsWith('refs/heads/')) {
-              ref = context.ref.replace('refs/heads/', '')
-            }
-
-            core.info(`cache miss: dispatching ${wf} on ${ref}`)
-
-            // Dispatch the prebuild workflow using the REST client
-            await github.rest.actions.createWorkflowDispatch({
+            
+            // Find the latest successful prebuild run
+            const runs = await github.rest.actions.listWorkflowRunsForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: wf,
-              ref: ref,
+              status: 'completed',
+              conclusion: 'success',
+              per_page: 1,
             })
-
-            // Now wait for the dispatched workflow run to start and complete
-            const start = new Date()
-            const timeoutMs = 1000 * 60 * 60 // 60 minutes timeout
-            const pollInterval = 15000
-
-            const findRun = async () => {
-              const runs = await github.rest.actions.listWorkflowRunsForRepo({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: wf,
-                per_page: 5,
-              })
-              return runs.data.workflow_runs.find(r => new Date(r.created_at) >= start)
+            
+            if (runs.data.workflow_runs.length === 0) {
+              core.setFailed('No successful prebuild run found to download artifact from')
+              return
             }
-
-            core.info('Waiting for prebuild run to be created...')
-            let run = null
-            const deadline = Date.now() + timeoutMs
-            while (Date.now() < deadline) {
-              run = await findRun()
-              if (run) break
-              await new Promise(r => setTimeout(r, pollInterval))
+            
+            const run = runs.data.workflow_runs[0]
+            core.info(`Found latest prebuild run id=${run.id}, downloading artifact ${artifactName}`)
+            
+            // Download the artifact
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: run.id,
+            })
+            
+            const artifact = artifacts.data.artifacts.find(a => a.name === artifactName)
+            if (!artifact) {
+              core.setFailed(`Artifact ${artifactName} not found in run ${run.id}`)
+              return
             }
+            
+            // Use the download-artifact action to download it
+            // Note: This script can't directly download, so we set an output to trigger the next step
+            core.setOutput('artifact-run-id', run.id.toString())
+            core.setOutput('download-artifact', 'true')
 
-            if (!run) core.setFailed('No prebuild run was detected after dispatch')
+      - name: Download vcpkg artifact from latest prebuild
+        if: steps.vcpkg-cache-restore.outputs.cache-hit != 'true' && steps.trigger-prebuild.outputs.download-artifact == 'true'
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: vcpkg-prebuild.yml
+          name: vcpkg-prebuild-win
+          path: vcpkg/installed
+          run_id: ${{ steps.trigger-prebuild.outputs.artifact-run-id }}
 
-            core.info(`Detected run id=${run.id}, waiting for completion (status=${run.status})`)
-
-            // Wait for the run to complete
-            while (Date.now() < deadline) {
-              const check = await github.rest.actions.getWorkflowRun({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                run_id: run.id,
-              })
-              if (check.data.status === 'completed') {
-                if (check.data.conclusion === 'success') {
-                  core.info('Prebuild completed successfully.')
-                  break
-                } else {
-                  core.setFailed(`Prebuild run finished with conclusion: ${check.data.conclusion}`)
-                  break
-                }
-              }
-              await new Promise(r => setTimeout(r, pollInterval))
-            }
+      - name: Restore vcpkg cache (post-prebuild)
+        if: steps.vcpkg-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        id: vcpkg-cache-restore-2
+        with:
+          path: |
+            vcpkg/installed
+            vcpkg/packages
+            vcpkg/buildtrees
+          # Same ordering: try the versions-hash cache first (which should exist),
+          # then canonical, then commit prefix.
+          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-
+            vcpkg-${{ runner.os }}-
+          # (no-op) single restore-keys list present above
 
       - name: Restore vcpkg cache (post-prebuild)
         if: steps.vcpkg-cache-restore.outputs.cache-hit != 'true'
