@@ -67,7 +67,7 @@ jobs:
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: 'f176b58f35a75f9f8f54099cd9df97d2e2793a2e'  # 2024.09.23
+          vcpkgGitCommitId: '75cdbf55732bc8f36e8286d0254feb8083a6dd2a'  # 2025.11.24
           vcpkgJsonGlob: 'vcpkg.json'
 
       - name: Setup vcpkg binary caching
