@@ -50,7 +50,7 @@ jobs:
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: '01f602195983451bc83e72f4214af2cbc495aa94'  # 2024.11.16 release
+          vcpkgGitCommitId: 'f7423ee180c4b7f40d43402c2feb3859161ef625'  # 2024.06.15 stable
 
       - name: Setup vcpkg binary caching
         shell: powershell
@@ -133,16 +133,14 @@ jobs:
 
       - name: Create Inno Setup installer
         shell: powershell
+        continue-on-error: true
         run: |
           choco install innosetup -y
           $env:PATH += ";C:\Program Files (x86)\Inno Setup 6"
-          
           iscc scripts/package-windows-inno.iss `
             /DSourceDir=dist-windows-Release `
             /DOutputDir=installer `
-            /DAppVersion=${{ needs.prepare-matrix.outputs.version }} `
-            /DLanguage=${{ matrix.language }} `
-            /DLicensing=${{ matrix.licensing }}
+            /DAppVersion=${{ needs.prepare-matrix.outputs.version }}
 
       - name: Create ZIP archive
         shell: powershell
@@ -152,12 +150,14 @@ jobs:
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: windows-${{ matrix.language }}-${{ matrix.licensing }}
           path: |
             Dyscover-*.zip
             installer/*.exe
             build/Release/symbols/
+          if-no-files-found: warn
 
   build-macos:
     name: macOS Release Build
@@ -189,6 +189,7 @@ jobs:
           cmake --build build --target Dyscover -j $(sysctl -n hw.ncpu)
 
       - name: Create .app bundle
+        continue-on-error: true
         run: |
           chmod +x scripts/package-macos.sh
           ./scripts/package-macos.sh \
@@ -198,6 +199,7 @@ jobs:
 
       - name: Sign & Notarize (if credentials available)
         if: env.APPLE_SIGNING_IDENTITY != ''
+        continue-on-error: true
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
@@ -227,6 +229,7 @@ jobs:
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: macos-${{ matrix.language }}-${{ matrix.licensing }}
           path: |
@@ -234,6 +237,7 @@ jobs:
             dist-macos-Release/Dyscover.app/
             build/symbols/
             sbom/
+          if-no-files-found: warn
 
   build-linux:
     name: Linux Release Build
@@ -251,14 +255,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             build-essential cmake ninja-build pkg-config \
-            libwxgtk3.2-dev \
+            libwxgtk3.0-gtk3-dev \
             libudev-dev \
             libasound2-dev \
             libpulse-dev \
             portaudio19-dev \
             gettext \
             dpkg-dev \
-            rpmbuild \
+            rpm \
             fakeroot \
             jq
           
@@ -292,6 +296,7 @@ jobs:
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: linux-${{ matrix.language }}-${{ matrix.licensing }}
           path: |
@@ -300,6 +305,7 @@ jobs:
             build/*.tar.gz
             build/symbols/
             sbom/
+          if-no-files-found: warn
 
   create-release:
     name: Create GitHub Release

@@ -26,7 +26,7 @@
 #define LOG_TAG_SPEECH "[Speech] "
 #define LOG_TAG_CORE "[Core] "
 
-Core::Core(App* pApp, Config* pConfig, Device* pDevice)
+Core::Core(App* pApp, Config* pConfig, Device* pDevice [[maybe_unused]])
 {
     m_pApp = pApp;
     m_pConfig = pConfig;
