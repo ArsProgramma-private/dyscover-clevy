@@ -23,7 +23,7 @@ wxIcon LoadIcon(const wxString& name)
 #ifdef __WINDOWS__
     return wxIcon(name, wxBITMAP_TYPE_ICO_RESOURCE);
 #else
-    return wxIcon(wxString::FromUTF8(iconPath), 
+    return wxIcon(wxString::FromUTF8(iconPath.c_str()), 
 #ifdef __APPLE__
                   wxBITMAP_TYPE_ICON
 #else
@@ -56,7 +56,7 @@ wxBitmap LoadSplashBitmap()
     return wxBitmap("Splash", wxBITMAP_TYPE_BMP_RESOURCE);
 #else
     std::string splashPath = GetLocator()->splashBitmap();
-    return wxBitmap(wxString::FromUTF8(splashPath), wxBITMAP_TYPE_BMP);
+    return wxBitmap(wxString::FromUTF8(splashPath.c_str()), wxBITMAP_TYPE_BMP);
 #endif
 }
 
@@ -68,15 +68,15 @@ wxString GetExecutablePath()
 
 wxString GetSoundFilesPath()
 {
-    return wxString::FromUTF8(GetLocator()->audioDir());
+    return wxString::FromUTF8(GetLocator()->audioDir().c_str());
 }
 
 wxString GetTTSDataPath()
 {
-    return wxString::FromUTF8(GetLocator()->ttsDir());
+    return wxString::FromUTF8(GetLocator()->ttsDir().c_str());
 }
 
 wxString GetTranslationsPath()
 {
-    return wxString::FromUTF8(GetLocator()->translationsDir());
+    return wxString::FromUTF8(GetLocator()->translationsDir().c_str());
 }
