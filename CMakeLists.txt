@@ -634,6 +634,8 @@ if(PACKAGING_ENABLE)
   elseif(UNIX)
     # Attempt DEB/RPM for Linux if tooling available
     list(APPEND CPACK_GENERATOR DEB RPM)
+    set(CPACK_PACKAGE_CONTACT "support@clevy.com")
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Alt. Medical B.V. <support@clevy.com>")
     set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
     set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
     set(CPACK_RPM_PACKAGE_GROUP "Utilities")
