@@ -11,17 +11,27 @@ on:
 jobs:
   integration:
     name: Integration tests (manual trigger — hardware)
-    # Only run if integration run was requested AND the repository has a secret configured for gated runs
-    if: ${{ github.event.inputs.run_integration == 'true' && secrets.INTEGRATION_RUN_TOKEN != '' }}
+    # Only run if integration run was requested
+    if: ${{ github.event.inputs.run_integration == 'true' }}
     # This job is intended to run on a self-hosted machine that has attached hardware
     runs-on: [self-hosted, linux, hardware]
     steps:
+      - name: Verify integration token is configured
+        env:
+          INTEGRATION_TOKEN: ${{ secrets.INTEGRATION_RUN_TOKEN }}
+        run: |
+          if [ -z "$INTEGRATION_TOKEN" ]; then
+            echo "::error::INTEGRATION_RUN_TOKEN secret is not configured. Integration tests require this secret to be set as a safety gate."
+            exit 1
+          fi
+          echo "Integration token verified. Proceeding with tests..."
+
       - uses: actions/checkout@v4
 
       - name: Installing / verifying system dependencies for integration tests
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libudev-dev libwxgtk3.0-gtk3-dev portaudio19-dev gettext
+          sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libudev-dev libwxgtk3.2-dev portaudio19-dev gettext
 
       - name: Configure (enable integration tests)
         run: |
