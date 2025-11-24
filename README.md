@@ -108,51 +108,52 @@ cmake --build build
 
 CI
 --
-This repository now includes a GitHub Actions CI workflow which verifies C++17 compiler support on Linux, macOS and Windows runners. The CI currently performs a lightweight C++17 smoke compile test so it can validate toolchain support without requiring heavy binary dependencies.
+This repository includes lightweight GitHub Actions CI workflows for fast PR validation:
 
-### CI Build Matrix
-| Platform | Runner | Compiler | Build Type | Audio Backend | Notes |
-|----------|--------|----------|------------|---------------|-------|
-| Linux (Ubuntu) | `ubuntu-latest` | GCC 9+ | Release | ALSA (PulseAudio unavailable in CI) | Full platform abstraction |
-| macOS (x86_64) | `macos-latest` | Apple Clang | Release | CoreAudio | IOKit device detection |
-| Windows (x64) | `windows-latest` | MSVC 19.28+ | Release | waveOut | Config Manager device detection |
+### CI Philosophy: Fast Feedback, Full Builds on Release
+
+**Pull Request Checks** (`.github/workflows/ci.yml`):
+- ✅ **Smoke Tests Only:** Validates C++17 compiler support across platforms (~2 minutes)
+- ✅ **No Heavy Dependencies:** Skips full wxWidgets builds and dependency compilation
+- ✅ **Quick Feedback:** Developers get immediate validation of compiler compatibility
+- ✅ **Resource Efficient:** Minimal GitHub Actions minutes consumption
+
+**Release Builds** (`.github/workflows/release.yml`):
+- ✅ **Full Production Builds:** Complete dependency compilation with vcpkg/Homebrew
+- ✅ **Security Gates:** Hardening verification, SBOM generation, code signing
+- ✅ **Multi-Platform Packages:** Installers for Windows/macOS/Linux
+- ✅ **Triggered by Tags:** Only runs when you push a version tag (e.g., `v4.0.5.0`)
+
+### CI Build Matrix (Smoke Tests)
+| Platform | Runner | Compiler | Test Type | Duration |
+|----------|--------|----------|-----------|----------|
+| Linux | `ubuntu-latest` | GCC 9+ | C++17 smoke compile | ~2 min |
+| macOS | `macos-latest` | Apple Clang | C++17 smoke compile | ~3 min |
+| Windows | `windows-2022` | MSVC 19.28+ | C++17 smoke compile | ~2 min |
 
 **Integration Tests:** Run on self-hosted runners with `hardware` label (requires physical USB devices). Manually triggered via workflow dispatch with `run_integration=true` and `INTEGRATION_RUN_TOKEN` secret configured.
 
-### CI Security & Compliance Gates
-Full product build jobs now include automated quality checks:
-
-- **Hardening Verification:** Each platform runs `verify-hardening.sh` / `verify-hardening.ps1` to confirm PIE/ASLR, NX/DEP, RELRO, and code signing status.
-- **Dependency Audit:** Extended audit scripts (`audit-deps.sh` / `audit-deps.ps1`) output SHA256 hashes of all linked libraries plus RPATH/LC_RPATH inspection. Results uploaded as CI artifacts.
-- **SBOM Generation:** Linux and macOS jobs generate CycloneDX SBOM + license matrix using `syft` and upload to artifacts (`sbom-linux`, `sbom-macos`).
-
-Artifacts available after each CI run:
-- `sbom-linux` / `sbom-macos`: CycloneDX JSON, license CSV, audit logs
-- `audit-windows`: Windows dependency audit with SHA256 hashes
-
-Future: Automated signature chain verification and SBOM diff analysis on PRs.
-
-### Release Builds
-The repository includes an automated release workflow (`.github/workflows/release.yml`) that triggers on version tags or manual dispatch:
+### Release Builds (Full Production Artifacts)
+The release workflow (`.github/workflows/release.yml`) performs complete production builds with all dependencies, security checks, and packaging. This is **only** triggered when you're ready to create a release.
 
 **Trigger Options:**
-- **Automatic:** Push a tag matching `v*.*.*` (e.g., `v4.0.5.0`)
+- **Automatic (Recommended):** Push a tag matching `v*.*.*` (e.g., `v4.0.5.0`)
 - **Manual:** Use "Run workflow" with version input via Actions tab
 
-**Build Matrix:** Builds for all language/licensing combinations:
-- Windows: Inno Setup installers + ZIP archives (x64)
-- macOS: Signed DMG packages + .app bundles (Universal: x86_64 + arm64)
-- Linux: DEB, RPM, and TGZ packages
+**What Gets Built:** Full matrix for all language/licensing combinations:
+- **Windows:** Inno Setup installers + ZIP archives (x64, with vcpkg dependencies)
+- **macOS:** Signed DMG packages + .app bundles (Universal: x86_64 + arm64)
+- **Linux:** DEB, RPM, and TGZ packages
 
-**Automated Tasks:**
-- vcpkg dependency management (Windows)
-- Binary hardening verification (all platforms)
-- Dependency audit with SHA256 provenance
-- SBOM generation (Linux/macOS)
-- Code signing: Authenticode (Windows), codesign + notarization (macOS)
-- Debug symbols packaging (separate artifacts)
-- SHA256SUMS.txt generation
-- Draft GitHub Release with all artifacts
+**Automated Quality & Security:**
+- ✅ Full dependency compilation (vcpkg/Homebrew)
+- ✅ Binary hardening verification (PIE/ASLR/NX/DEP/RELRO)
+- ✅ Dependency audit with SHA256 provenance
+- ✅ SBOM generation (CycloneDX format)
+- ✅ Code signing: Authenticode (Windows), codesign + notarization (macOS)
+- ✅ Debug symbols packaging (separate artifacts)
+- ✅ SHA256SUMS.txt generation
+- ✅ Draft GitHub Release with all artifacts
 
 **Required Secrets** (configure in repository settings → Secrets and variables → Actions):
 - `WINDOWS_SIGNING_CERT`: Base64-encoded PFX certificate

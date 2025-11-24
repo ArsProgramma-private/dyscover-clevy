@@ -50,11 +50,17 @@ jobs:
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: 'c8696863d371ab7f46e213d8f5ca923c4aef2a00'
+          vcpkgGitCommitId: '01f602195983451bc83e72f4214af2cbc495aa94'  # 2024.11.16 release
+
+      - name: Setup vcpkg binary caching
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:LOCALAPPDATA\vcpkg\archives"
+          vcpkg integrate install
 
       - name: Install vcpkg dependencies
         run: |
-          vcpkg install wxwidgets:x64-windows portaudio:x64-windows gettext:x64-windows
+          vcpkg install wxwidgets:x64-windows portaudio:x64-windows gettext:x64-windows --clean-after-build
 
       - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v2
