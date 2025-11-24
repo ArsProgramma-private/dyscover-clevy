@@ -89,9 +89,15 @@ jobs:
             vcpkg/installed
             vcpkg/packages
             vcpkg/buildtrees
-          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
+          # Primary key: canonical cache keyed by pinned vcpkg commit (shared
+          # across branches/tags). This lets Release restore a prebuilt cache
+          # created on another ref (e.g. a branch prebuild or scheduled prebuild)
+          # when the package versions hash differs between refs.
+          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a
+          # Fallback keys (try the exact versions-hash keyed cache next, then
+          # finally the runner-only prefix).
           restore-keys: |
-            vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a
+            vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
             vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-
             vcpkg-${{ runner.os }}-
 
@@ -179,11 +185,15 @@ jobs:
             vcpkg/installed
             vcpkg/packages
             vcpkg/buildtrees
-          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
+          # Same ordering for the post-prebuild restore: try the canonical
+          # cache first (which is likely to exist from scheduled/branch
+          # prebuilds), then try the versions-hash keyed cache.
+          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a
           restore-keys: |
-            vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a
+            vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
             vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-
             vcpkg-${{ runner.os }}-
+          # (no-op) single restore-keys list present above
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
