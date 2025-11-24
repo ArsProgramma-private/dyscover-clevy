@@ -78,6 +78,9 @@ jobs:
           # Build vcpkg from source instead of downloading prebuilt
           .\bootstrap-vcpkg.bat -disableMetrics
 
+      # Use a stable vcpkg cache key that includes the pinned vcpkg commit id and
+      # the vcpkg/versions/** content hash. This prevents tiny differences in the
+      # generated vcpkg.json (line endings/whitespace) from causing cache misses.
       - name: Cache vcpkg packages
         id: vcpkg-cache-restore
         uses: actions/cache@v4
@@ -86,9 +89,9 @@ jobs:
             vcpkg/installed
             vcpkg/packages
             vcpkg/buildtrees
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ hashFiles('vcpkg/versions/**') }}
+          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
           restore-keys: |
-            vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-
+            vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-
             vcpkg-${{ runner.os }}-
 
       - name: Trigger prebuild and wait when cache-miss
@@ -175,9 +178,9 @@ jobs:
             vcpkg/installed
             vcpkg/packages
             vcpkg/buildtrees
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ hashFiles('vcpkg/versions/**') }}
+          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
           restore-keys: |
-            vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-
+            vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-
             vcpkg-${{ runner.os }}-
 
       - name: Setup vcpkg

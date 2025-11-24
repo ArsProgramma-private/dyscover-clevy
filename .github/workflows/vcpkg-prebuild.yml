@@ -39,6 +39,10 @@ jobs:
           ref: 75cdbf55732bc8f36e8286d0254feb8083a6dd2a
           fetch-depth: 1
 
+      # Use a stable cache key that depends on the pinned vcpkg commit and the
+      # vcpkg/versions/** files. Avoid using the ephemeral vcpkg.json hash here
+      # because it can differ in tiny ways (line endings/whitespace) between
+      # workflows and lead to mismatched cache keys.
       - name: Restore vcpkg cache
         uses: actions/cache@v4
         id: vcpkg-cache-restore
@@ -47,9 +51,9 @@ jobs:
             vcpkg/installed
             vcpkg/packages
             vcpkg/buildtrees
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ hashFiles('vcpkg/versions/**') }}
+          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
           restore-keys: |
-            vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-
+            vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-
             vcpkg-${{ runner.os }}-
 
       - name: Bootstrap vcpkg
@@ -76,7 +80,7 @@ jobs:
             vcpkg/installed
             vcpkg/packages
             vcpkg/buildtrees
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ hashFiles('vcpkg/versions/**') }}
+          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
 
       - name: Upload some cache manifest
         uses: actions/upload-artifact@v4
