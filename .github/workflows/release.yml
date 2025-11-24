@@ -81,7 +81,7 @@ jobs:
       # Use a stable vcpkg cache key that includes the pinned vcpkg commit id and
       # the vcpkg/versions/** content hash. This prevents tiny differences in the
       # generated vcpkg.json (line endings/whitespace) from causing cache misses.
-      # Cache vcpkg packages
+      - name: Cache vcpkg packages
         id: vcpkg-cache-restore
         uses: actions/cache@v4
         with:
