@@ -4,17 +4,17 @@
 
 #include "Keyboard.h"
 
-#ifdef WIN32
+#ifdef __PLATFORM_WINDOWS__
 #include "KeyboardWindows.h"
-#else
+#elif defined(__PLATFORM_LINUX__) || defined(__PLATFORM_MAC__)
 #include "KeyboardLinux.h"
 #endif
 
 Keyboard* Keyboard::Create(IKeyEventListener* pListener)
 {
-#ifdef WIN32
+#ifdef __PLATFORM_WINDOWS__
     Keyboard* pKeyboard = new KeyboardWindows(pListener);
-#else
+#elif defined(__PLATFORM_LINUX__) || defined(__PLATFORM_MAC__)
     Keyboard* pKeyboard = new KeyboardLinux(pListener);
 #endif
 
