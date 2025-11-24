@@ -89,64 +89,16 @@ jobs:
             vcpkg/installed
             vcpkg/packages
             vcpkg/buildtrees
-          # Primary key: versions-hash keyed cache (matches prebuild exactly)
-          # This ensures we hit the existing cache without needing prebuild on tags
-          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
+          # Primary key: canonical cache keyed by pinned vcpkg commit (shared
+          # across branches/tags). This lets Release restore a prebuilt cache
+          # created on another ref (e.g. a branch prebuild or scheduled prebuild)
+          # when the package versions hash differs between refs.
+          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a
           # Fallback keys for cross-ref reuse
           restore-keys: |
+            vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
             vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-
             vcpkg-${{ runner.os }}-
-
-      - name: Download vcpkg packages from latest prebuild
-        id: download-vcpkg
-        if: steps.vcpkg-cache-restore.outputs.cache-hit != 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const artifactName = 'vcpkg-prebuild-win'
-            const wf = 'Prebuild vcpkg packages'
-            
-            // Find the latest successful prebuild runs
-            const runs = await github.rest.actions.listWorkflowRunsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: wf,
-              status: 'completed',
-              conclusion: 'success',
-              per_page: 20,  // Check last 20 successful runs
-            })
-            
-            if (runs.data.workflow_runs.length === 0) {
-              core.setFailed('No successful prebuild runs found')
-              return
-            }
-            
-            // Find the first run that has the artifact
-            for (const run of runs.data.workflow_runs) {
-              const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                run_id: run.id,
-              })
-              
-              const artifact = artifacts.data.artifacts.find(a => a.name === artifactName)
-              if (artifact) {
-                core.info(`Found artifact in run id=${run.id}`)
-                core.setOutput('artifact-run-id', run.id.toString())
-                return
-              }
-            }
-            
-            core.setFailed(`Artifact ${artifactName} not found in any recent successful prebuild run`)
-
-      - name: Extract vcpkg packages
-        if: steps.vcpkg-cache-restore.outputs.cache-hit != 'true'
-        uses: dawidd6/action-download-artifact@v3
-        with:
-          workflow: Prebuild vcpkg packages
-          name: vcpkg-prebuild-win
-          path: vcpkg/installed
-          run_id: ${{ steps.download-vcpkg.outputs.artifact-run-id }}
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
