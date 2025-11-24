@@ -107,6 +107,8 @@ jobs:
           vcpkgJsonGlob: 'vcpkg.json'
           doNotUpdateVcpkg: true
           doNotCache: true  # We handle caching manually above
+        env:
+          VCPKG_BUILD_TYPE: release
 
       - name: Setup vcpkg binary caching
         shell: powershell
