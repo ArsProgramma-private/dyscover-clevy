@@ -63,7 +63,7 @@ jobs:
 
       - name: Install vcpkg dependencies
         run: |
-          vcpkg install wxwidgets:x64-windows portaudio:x64-windows gettext:x64-windows --clean-after-build
+          vcpkg install wxwidgets:x64-windows-nopkg portaudio:x64-windows-nopkg gettext:x64-windows-nopkg --overlay-triplets=triplets --clean-after-build
 
       - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v2
@@ -183,6 +183,7 @@ jobs:
           cmake -S . -B build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_FLAGS="-Wno-error=missing-field-initializers" \
             -DLANGUAGE=${{ matrix.language }} \
             -DLICENSING=${{ matrix.licensing }} \
             -DPACKAGING_ENABLE=ON \
