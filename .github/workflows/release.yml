@@ -35,25 +35,6 @@ jobs:
             echo "tag=$TAG" >> $GITHUB_OUTPUT
           fi
 
-  # Temporarily disabled to save costs during Windows troubleshooting
-  # build-macos:
-  #   name: macOS Release Build
-  #   needs: prepare-matrix
-  #   runs-on: macos-latest
-  #   strategy:
-  #     matrix:
-  #       language: [nl]
-  #       licensing: [demo]
-
-  # build-linux:
-  #   name: Linux Release Build
-  #   needs: prepare-matrix
-  #   runs-on: ubuntu-22.04
-  #   strategy:
-  #     matrix:
-  #       language: [nl]
-  #       licensing: [demo]
-
   build-windows:
     name: Windows Release Build
     needs: prepare-matrix
@@ -241,160 +222,162 @@ jobs:
             build/Release/symbols/
           if-no-files-found: warn
 
-  build-macos:
-    name: macOS Release Build
-    needs: prepare-matrix
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        language: [nl]
-        licensing: [demo]
-    steps:
-      - uses: actions/checkout@v4
+  # Temporarily disabled to save costs during Windows troubleshooting
+  # build-macos:
+  #   name: macOS Release Build
+  #   needs: prepare-matrix
+  #   runs-on: macos-latest
+  #   strategy:
+  #     matrix:
+  #       language: [nl]
+  #       licensing: [demo]
+  #   steps:s:
+  #     - uses: actions/checkout@v4
+  #
+  #     - name: Install dependencies
+  #       run: |
+  #         brew update
+  #         brew install wxwidgets portaudio gettext cmake ninja syft jq
+  #
+  #     - name: Configure & Build
+  #       run: |
+  #         cmake -S . -B build \
+  #           -G Ninja \
+  #           -DCMAKE_BUILD_TYPE=Release \
+  #           -DCMAKE_CXX_FLAGS="-Wno-error=missing-field-initializers -Wno-error=unused-const-variable" \
+  #           -DBUILD_WITH_LIBRSTTS=OFF \
+  #           -DLANGUAGE=${{ matrix.language }} \
+  #           -DLICENSING=${{ matrix.licensing }} \
+  #           -DPACKAGING_ENABLE=ON \
+  #           -DPACKAGING_DEBUG_SYMBOLS=ON \
+  #           -DBUILD_TESTS=OFF
+  #         cmake --build build --target Dyscover -j $(sysctl -n hw.ncpu)
+  #
+  #     - name: Create .app bundle
+  #       continue-on-error: true
+  #       run: |
+  #         chmod +x scripts/package-macos.sh
+  #         ./scripts/package-macos.sh \
+  #           -c Release \
+  #           -l ${{ matrix.language }} \
+  #           -L ${{ matrix.licensing }}
+  #
+  #     - name: Sign & Notarize (if credentials available)
+  #       if: env.APPLE_SIGNING_IDENTITY != ''
+  #       continue-on-error: true
+  #       env:
+  #         APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+  #         APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+  #         APPLE_NOTARY_ISSUER: ${{ secrets.APPLE_NOTARY_ISSUER }}
+  #         APPLE_NOTARY_KEY_FILE: ${{ secrets.APPLE_NOTARY_KEY_FILE }}
+  #       run: |
+  #         chmod +x scripts/package-macos.sh scripts/notarize-macos.sh
+  #         
+  #         ./scripts/package-macos.sh \
+  #           -c Release \
+  #           -l ${{ matrix.language }} \
+  #           -L ${{ matrix.licensing }} \
+  #           --sign "$APPLE_SIGNING_IDENTITY"
+  #         
+  #         DMG=$(ls dist-macos-Release/Dyscover-*.dmg | head -1)
+  #         echo "$APPLE_NOTARY_KEY_FILE" > AuthKey.p8
+  #         ./scripts/notarize-macos.sh "$DMG"
+  #         rm AuthKey.p8
+  #
+  #     - name: Run security audit
+  #       continue-on-error: true
+  #       run: |
+  #         chmod +x scripts/verify-hardening.sh scripts/audit-deps.sh scripts/generate-sbom.sh
+  #         ./scripts/verify-hardening.sh build/Dyscover
+  #         ./scripts/audit-deps.sh Dyscover build
+  #         ./scripts/generate-sbom.sh build/Dyscover
+  #
+  #     - name: Upload artifacts
+  #       uses: actions/upload-artifact@v4
+  #       if: always()
+  #       with:
+  #         name: macos-${{ matrix.language }}-${{ matrix.licensing }}
+  #         path: |
+  #           dist-macos-Release/*.dmg
+  #           dist-macos-Release/Dyscover.app/
+  #           build/symbols/
+  #           sbom/
+  #         if-no-files-found: warn
 
-      - name: Install dependencies
-        run: |
-          brew update
-          brew install wxwidgets portaudio gettext cmake ninja syft jq
-
-      - name: Configure & Build
-        run: |
-          cmake -S . -B build \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_FLAGS="-Wno-error=missing-field-initializers -Wno-error=unused-const-variable" \
-            -DBUILD_WITH_LIBRSTTS=OFF \
-            -DLANGUAGE=${{ matrix.language }} \
-            -DLICENSING=${{ matrix.licensing }} \
-            -DPACKAGING_ENABLE=ON \
-            -DPACKAGING_DEBUG_SYMBOLS=ON \
-            -DBUILD_TESTS=OFF
-          cmake --build build --target Dyscover -j $(sysctl -n hw.ncpu)
-
-      - name: Create .app bundle
-        continue-on-error: true
-        run: |
-          chmod +x scripts/package-macos.sh
-          ./scripts/package-macos.sh \
-            -c Release \
-            -l ${{ matrix.language }} \
-            -L ${{ matrix.licensing }}
-
-      - name: Sign & Notarize (if credentials available)
-        if: env.APPLE_SIGNING_IDENTITY != ''
-        continue-on-error: true
-        env:
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
-          APPLE_NOTARY_ISSUER: ${{ secrets.APPLE_NOTARY_ISSUER }}
-          APPLE_NOTARY_KEY_FILE: ${{ secrets.APPLE_NOTARY_KEY_FILE }}
-        run: |
-          chmod +x scripts/package-macos.sh scripts/notarize-macos.sh
-          
-          ./scripts/package-macos.sh \
-            -c Release \
-            -l ${{ matrix.language }} \
-            -L ${{ matrix.licensing }} \
-            --sign "$APPLE_SIGNING_IDENTITY"
-          
-          DMG=$(ls dist-macos-Release/Dyscover-*.dmg | head -1)
-          echo "$APPLE_NOTARY_KEY_FILE" > AuthKey.p8
-          ./scripts/notarize-macos.sh "$DMG"
-          rm AuthKey.p8
-
-      - name: Run security audit
-        continue-on-error: true
-        run: |
-          chmod +x scripts/verify-hardening.sh scripts/audit-deps.sh scripts/generate-sbom.sh
-          ./scripts/verify-hardening.sh build/Dyscover
-          ./scripts/audit-deps.sh Dyscover build
-          ./scripts/generate-sbom.sh build/Dyscover
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: macos-${{ matrix.language }}-${{ matrix.licensing }}
-          path: |
-            dist-macos-Release/*.dmg
-            dist-macos-Release/Dyscover.app/
-            build/symbols/
-            sbom/
-          if-no-files-found: warn
-
-  build-linux:
-    name: Linux Release Build
-    needs: prepare-matrix
-    runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        language: [nl]
-        licensing: [demo]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential cmake ninja-build pkg-config \
-            libwxgtk3.0-gtk3-dev \
-            libudev-dev \
-            libasound2-dev \
-            libpulse-dev \
-            portaudio19-dev \
-            gettext \
-            dpkg-dev \
-            rpm \
-            fakeroot \
-            jq
-          
-          # Install syft for SBOM - use direct download with version pinned
-          SYFT_VERSION="1.19.0"
-          curl -sSfL "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz" -o syft.tar.gz || true
-          if [ -f syft.tar.gz ]; then
-            sudo tar -C /usr/local/bin -xzf syft.tar.gz syft 2>/dev/null || echo "Syft install failed, continuing without SBOM"
-            rm -f syft.tar.gz
-          fi
-
-      - name: Configure & Build
-        run: |
-          cmake -S . -B build \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_FLAGS="-Wno-error=missing-field-initializers" \
-            -DLANGUAGE=${{ matrix.language }} \
-            -DLICENSING=${{ matrix.licensing }} \
-            -DPACKAGING_ENABLE=ON \
-            -DPACKAGING_DEBUG_SYMBOLS=ON \
-            -DBUILD_TESTS=OFF
-          cmake --build build --target Dyscover -j $(nproc)
-
-      - name: Create packages
-        run: |
-          cd build
-          cpack -G "DEB;RPM;TGZ"
-
-      - name: Run security audit
-        continue-on-error: true
-        run: |
-          chmod +x scripts/verify-hardening.sh scripts/audit-deps.sh scripts/generate-sbom.sh
-          ./scripts/verify-hardening.sh build/Dyscover
-          ./scripts/audit-deps.sh Dyscover build
-          ./scripts/generate-sbom.sh build/Dyscover
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: linux-${{ matrix.language }}-${{ matrix.licensing }}
-          path: |
-            build/*.deb
-            build/*.rpm
-            build/*.tar.gz
-            build/symbols/
-            sbom/
-          if-no-files-found: warn
+  # Temporarily disabled to save costs during Windows troubleshooting
+  # build-linux:
+  #   name: Linux Release Build
+  #   needs: prepare-matrix
+  #   runs-on: ubuntu-22.04
+  #   strategy:
+  #     matrix:
+  #       language: [nl]
+  #       licensing: [demo]
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - name: Install dependencies
+  #       run: |
+  #         sudo apt-get update
+  #         sudo apt-get install -y \
+  #           build-essential cmake ninja-build pkg-config \
+  #           libwxgtk3.0-gtk3-dev \
+  #           libudev-dev \
+  #           libasound2-dev \
+  #           libpulse-dev \
+  #           portaudio19-dev \
+  #           gettext \
+  #           dpkg-dev \
+  #           rpm \
+  #           fakeroot \
+  #           jq
+  #         
+  #         # Install syft for SBOM - use direct download with version pinned
+  #         SYFT_VERSION="1.19.0"
+  #         curl -sSfL "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz" -o syft.tar.gz || true
+  #         if [ -f syft.tar.gz ]; then
+  #           sudo tar -C /usr/local/bin -xzf syft.tar.gz syft 2>/dev/null || echo "Syft install failed, continuing without SBOM"
+  #           rm -f syft.tar.gz
+  #         fi
+  #
+  #     - name: Configure & Build
+  #       run: |
+  #         cmake -S . -B build \
+  #           -G Ninja \
+  #           -DCMAKE_BUILD_TYPE=Release \
+  #           -DCMAKE_CXX_FLAGS="-Wno-error=missing-field-initializers" \
+  #           -DLANGUAGE=${{ matrix.language }} \
+  #           -DLICENSING=${{ matrix.licensing }} \
+  #           -DPACKAGING_ENABLE=ON \
+  #           -DPACKAGING_DEBUG_SYMBOLS=ON \
+  #           -DBUILD_TESTS=OFF
+  #         cmake --build build --target Dyscover -j $(nproc)
+  #
+  #     - name: Create packages
+  #       run: |
+  #         cd build
+  #         cpack -G "DEB;RPM;TGZ"
+  #
+  #     - name: Run security audit
+  #       continue-on-error: true
+  #       run: |
+  #         chmod +x scripts/verify-hardening.sh scripts/audit-deps.sh scripts/generate-sbom.sh
+  #         ./scripts/verify-hardening.sh build/Dyscover
+  #         ./scripts/audit-deps.sh Dyscover build
+  #         ./scripts/generate-sbom.sh build/Dyscover
+  #
+  #     - name: Upload artifacts
+  #       uses: actions/upload-artifact@v4
+  #       if: always()
+  #       with:
+  #         name: linux-${{ matrix.language }}-${{ matrix.licensing }}
+  #         path: |
+  #           build/*.deb
+  #           build/*.rpm
+  #           build/*.tar.gz
+  #           build/symbols/
+  #           sbom/
+  #         if-no-files-found: warn
 
   create-release:
     name: Create GitHub Release
