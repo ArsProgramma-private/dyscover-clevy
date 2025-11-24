@@ -14,6 +14,7 @@
 #include "DeviceDetector.h"
 #include "../SupportedDevices.h"
 #include <wx/log.h>
+#include <wx/frame.h>
 
 namespace {
     constexpr PlatformCapabilities HOTPLUG_EVENTS = 1 << 0;

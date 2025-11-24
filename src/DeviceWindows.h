@@ -6,7 +6,9 @@
 
 #include <wx/frame.h>
 
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #include <cfgmgr32.h>
 
@@ -24,4 +26,5 @@ private:
     WXLRESULT MSWWindowProc(WXUINT message, WXWPARAM wParam, WXLPARAM lParam) override;
 
     bool DoesContainClevyKeyboard(DEVINST hDevice);
+    bool extractVidPid(const TCHAR* hardwareId, std::string& vid, std::string& pid);
 };
