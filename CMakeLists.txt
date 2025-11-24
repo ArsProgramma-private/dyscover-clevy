@@ -180,7 +180,7 @@ else()
 endif()
 
 # Use wxWidgets
-find_package(wxWidgets REQUIRED)
+find_package(wxWidgets REQUIRED COMPONENTS core base adv)
 include(${wxWidgets_USE_FILE})
 target_link_libraries(Dyscover PRIVATE ${wxWidgets_LIBRARIES})
 
