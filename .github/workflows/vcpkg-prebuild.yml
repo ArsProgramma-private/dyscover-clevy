@@ -1,0 +1,84 @@
+name: Prebuild vcpkg packages
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    # weekly cache refresh (UTC Sunday 02:00)
+    - cron: '0 2 * * 0'
+
+jobs:
+  vcpkg-prebuild:
+    name: Build & cache vcpkg packages (Windows)
+    runs-on: windows-2022
+    env:
+      VCPKG_ROOT: ${{ runner.workspace }}/vcpkg
+      CMAKE_GENERATOR: "Visual Studio 17 2022"
+      VCPKG_DEFAULT_TRIPLET: x64-windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create vcpkg.json manifest
+        shell: powershell
+        run: |
+          $manifest = @'
+          {
+            "dependencies": [
+              { "name": "wxwidgets", "features": ["sound"] },
+              "portaudio",
+              { "name": "gettext", "features": ["tools"] }
+            ]
+          }
+          '@
+          $manifest | Out-File -FilePath vcpkg.json -Encoding utf8
+
+      - name: Clone vcpkg
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git $VCPKG_ROOT
+          cd $VCPKG_ROOT
+          # pin to a known commit used across workflows
+          git fetch --depth 1 origin 75cdbf55732bc8f36e8286d0254feb8083a6dd2a
+          git checkout 75cdbf55732bc8f36e8286d0254feb8083a6dd2a
+          .\bootstrap-vcpkg.bat -disableMetrics
+
+      - name: Restore vcpkg cache
+        uses: actions/cache@v4
+        id: vcpkg-cache-restore
+        with:
+          path: |
+            vcpkg/installed
+            vcpkg/packages
+            vcpkg/buildtrees
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ hashFiles('vcpkg/versions/**') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-
+            vcpkg-${{ runner.os }}-
+
+      - name: Install vcpkg packages
+        id: vcpkg-install
+        run: |
+          cd $VCPKG_ROOT
+          if (Test-Path installed/x64-windows) {
+            echo "Cache restored, verifying packages..."
+          }
+          ./vcpkg install --recurse --clean-after-build --triplet $env:VCPKG_DEFAULT_TRIPLET
+
+      - name: Save vcpkg cache (no-op if already up-to-date)
+        uses: actions/cache@v4
+        if: steps.vcpkg-cache-restore.outputs.cache-hit != 'true'
+        with:
+          path: |
+            vcpkg/installed
+            vcpkg/packages
+            vcpkg/buildtrees
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ hashFiles('vcpkg/versions/**') }}
+
+      - name: Upload some cache manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: vcpkg-prebuild-${{ matrix.language || 'win' }}
+          path: |
+            vcpkg/installed
+          if-no-files-found: ignore
+
+      - name: Done
+        run: echo "vcpkg prebuild complete"
