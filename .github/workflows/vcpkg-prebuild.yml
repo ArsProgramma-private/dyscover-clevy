@@ -1,9 +1,6 @@
 name: Prebuild vcpkg packages
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
   workflow_dispatch: {}
   schedule:
     # weekly cache refresh (UTC Sunday 02:00)
