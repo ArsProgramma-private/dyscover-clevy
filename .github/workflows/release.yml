@@ -85,16 +85,39 @@ jobs:
 
       - name: Configure & Build
         shell: powershell
+        env:
+          X_VCPKG_ASSET_SOURCES: "x-azurl,https://github.com,,,readwrite"
         run: |
-          cmake -S . -B build `
-            -G "Visual Studio 17 2022" -A x64 `
-            -DCMAKE_TOOLCHAIN_FILE="${env:VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DLANGUAGE=${{ matrix.language }} `
-            -DLICENSING=${{ matrix.licensing }} `
-            -DPACKAGING_ENABLE=ON `
-            -DPACKAGING_DEBUG_SYMBOLS=ON `
-            -DBUILD_TESTS=OFF
+          # Retry CMake configure up to 3 times to handle transient CDN errors
+          $maxRetries = 3
+          $retryCount = 0
+          $success = $false
+          
+          while (-not $success -and $retryCount -lt $maxRetries) {
+            try {
+              cmake -S . -B build `
+                -G "Visual Studio 17 2022" -A x64 `
+                -DCMAKE_TOOLCHAIN_FILE="${env:VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" `
+                -DCMAKE_BUILD_TYPE=Release `
+                -DLANGUAGE=${{ matrix.language }} `
+                -DLICENSING=${{ matrix.licensing }} `
+                -DPACKAGING_ENABLE=ON `
+                -DPACKAGING_DEBUG_SYMBOLS=ON `
+                -DBUILD_TESTS=OFF
+              $success = $true
+            }
+            catch {
+              $retryCount++
+              if ($retryCount -lt $maxRetries) {
+                Write-Host "Configure failed (attempt $retryCount/$maxRetries), retrying in 30 seconds..."
+                Start-Sleep -Seconds 30
+              }
+              else {
+                throw "CMake configure failed after $maxRetries attempts"
+              }
+            }
+          }
+          
           cmake --build build --config Release --target Dyscover -j 4
 
       - name: Copy dependencies
@@ -268,8 +291,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        env:
-          SYFT_VERSION: 1.9.0
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -285,10 +306,13 @@ jobs:
             fakeroot \
             jq
           
-          # Install syft for SBOM
-          curl -sSfL "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz" -o syft.tar.gz
-          sudo tar -C /usr/local/bin -xzf syft.tar.gz syft
-          rm syft.tar.gz
+          # Install syft for SBOM - use direct download with version pinned
+          SYFT_VERSION="1.19.0"
+          curl -sSfL "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz" -o syft.tar.gz || true
+          if [ -f syft.tar.gz ]; then
+            sudo tar -C /usr/local/bin -xzf syft.tar.gz syft 2>/dev/null || echo "Syft install failed, continuing without SBOM"
+            rm -f syft.tar.gz
+          fi
 
       - name: Configure & Build
         run: |

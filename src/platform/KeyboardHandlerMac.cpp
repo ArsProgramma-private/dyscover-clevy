@@ -7,12 +7,7 @@
 #if defined(__APPLE__)
 #  include <CoreServices/CoreServices.h>
 #  include <ApplicationServices/ApplicationServices.h>
-#  if __has_include(<HIToolbox/Events.h>)
-#    include <HIToolbox/Events.h>
-#  else
-#    include <HIToolbox/HIToolbox.h>
-#  endif
-#  include <HIToolbox/TextInputSources.h>
+#  include <Carbon/Carbon.h>
 #endif
 
 // Provide a macOS keyboard handler that attempts to use the system layout
