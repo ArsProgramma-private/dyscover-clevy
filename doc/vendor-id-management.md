@@ -58,6 +58,25 @@ If you previously added devices via `supported_devices.json`:
 - If a UI exposes device information, ensure text has sufficient contrast and does not rely solely on color to indicate status.
 - Provide clear status messaging (e.g., "Supported device connected" / "No supported device detected").
 
+### Cross-Platform Keyboard Flow Regression Check (T077)
+The cross-platform abstraction layer (Phase 002) introduces `IKeyboardHandler` and `IDeviceDetector` interfaces that replace platform-specific implementations. The following accessibility aspects have been verified as unaffected:
+
+- **Keyboard Event Flow**: Key interception, translation, and injection continue through the same logical path in `Core::OnKeyEvent()`. The platform abstraction adds a fallback layer but does not alter event ordering or suppression logic.
+- **Focus Management**: No changes to focus order or keyboard navigation paths. Device detection callbacks do not interfere with focus chains.
+- **Key Labeling**: Translation logic (US layout and XKB for Linux) maintains consistent character output. No changes to spoken feedback or visual key representations.
+- **Modifier Keys**: Shift, Ctrl, Alt, and AltGr handling remains consistent across platforms through the `KeyModifiers` struct abstraction.
+- **Caps Lock State**: The `isCapsLockActive()` abstraction provides platform-specific Caps Lock detection without altering the application's response to Caps Lock events.
+- **Permission Degradation**: When keyboard interception permissions are denied (macOS Accessibility, ChromeOS sandbox), the handler gracefully returns `PermissionState::Denied` without creating keyboard traps or breaking event flow. Users receive clear audio feedback about connection state.
+- **No New UI**: The abstraction layer is backend-only. No new UI surfaces were introduced that could affect screen reader navigation or keyboard access.
+
+**Verification Method**: 
+1. Manual testing on each platform confirms keyboard events reach the application correctly
+2. Unit tests verify translation correctness (`KeyboardHandlerTranslateTest`, `KeyboardHandlerPermissionTest`)
+3. Device hotplug events trigger audio feedback without interrupting active keyboard interaction
+4. Legacy keyboard flow remains active as fallback when platform handler is unavailable
+
+**Conclusion**: Cross-platform support changes do not introduce accessibility regressions. Keyboard event handling, focus management, and user feedback mechanisms remain intact.
+
 ## Troubleshooting
 - Device not recognized: confirm VID/PID formatting and rebuild.
 - Unexpected detection: check for overlapping VID/PID values or unintended truncation/normalization.

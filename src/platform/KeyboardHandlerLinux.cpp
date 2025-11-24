@@ -68,39 +68,55 @@ public:
         return m_capsCached;
     }
 
-    std::string translate(Key key, const KeyModifiers& mods) override {
 #if defined(HAVE_LIBXKBCOMMON)
+    std::string translateWithXkb(Key key, const KeyModifiers& mods) {
         // Try to use xkbcommon for layout-aware translation.
-        if (m_useXKB && m_state && m_keymap) {
-            int evdev = KeyCodeFromKey(key);
-            if (evdev < 0) return std::string();
+        if (!m_useXKB || !m_state || !m_keymap) return std::string();
+        
+        int evdev = KeyCodeFromKey(key);
+        if (evdev < 0) return std::string();
 
-            // xkb uses XKB keycodes (evdev keycodes + 8)
-            xkb_keycode_t xkey = static_cast<xkb_keycode_t>(evdev + 8);
+        // xkb uses XKB keycodes (evdev keycodes + 8)
+        xkb_keycode_t xkey = static_cast<xkb_keycode_t>(evdev + 8);
 
-            // Build a depressed mask from modifiers we understand
-            xkb_mod_mask_t depressed = 0;
-            if (mods.shift && m_modMaskShift) depressed |= (1ULL << m_modMaskShift);
-            if (mods.ctrl && m_modMaskCtrl) depressed |= (1ULL << m_modMaskCtrl);
-            if (mods.alt && m_modMaskAlt) depressed |= (1ULL << m_modMaskAlt);
-            if (mods.altgr && m_modMaskAltGr) depressed |= (1ULL << m_modMaskAltGr);
+        // Build a depressed mask from modifiers we understand
+        xkb_mod_mask_t depressed = 0;
+        if (mods.shift && m_modMaskShift) depressed |= (1ULL << m_modMaskShift);
+        if (mods.ctrl && m_modMaskCtrl) depressed |= (1ULL << m_modMaskCtrl);
+        if (mods.alt && m_modMaskAlt) depressed |= (1ULL << m_modMaskAlt);
+        if (mods.altgr && m_modMaskAltGr) depressed |= (1ULL << m_modMaskAltGr);
 
-            // update snapshot state for the single lookup. Leave latched/locked/group as 0.
-            xkb_state_update_mask(m_state, depressed, 0, 0, 0, 0, 0);
+        // update snapshot state for the single lookup. Leave latched/locked/group as 0.
+        xkb_state_update_mask(m_state, depressed, 0, 0, 0, 0, 0);
 
-            char buf[64] = {0};
-            int r = xkb_state_key_get_utf8(m_state, xkey, buf, sizeof(buf));
-            if (r > 0) return std::string(buf, r);
-            // fall through to fallback if not translated
-        }
+        char buf[64] = {0};
+        int r = xkb_state_key_get_utf8(m_state, xkey, buf, sizeof(buf));
+        if (r > 0) return std::string(buf, r);
+        
+        return std::string();
+    }
 #endif
 
+    std::string translateFallback(Key key, const KeyModifiers& mods) {
         // Return a simple lowercase ascii for printable letters with Shift support
         if (key >= Key::A && key <= Key::Z) {
             char base = 'a' + static_cast<int>(key) - static_cast<int>(Key::A);
             if (mods.shift) base = static_cast<char>(::toupper(base));
             return std::string(1, base);
         }
+        
+        // Digits and punctuation
+        std::string digitResult = translateDigit(key, mods);
+        if (!digitResult.empty()) return digitResult;
+        
+        std::string punctResult = translatePunctuation(key, mods);
+        if (!punctResult.empty()) return punctResult;
+        
+        if (key == Key::Space) return " ";
+        return std::string();
+    }
+
+    std::string translateDigit(Key key, const KeyModifiers& mods) {
         // Digits fallback (explicit switch due to enum ordering One..Nine..Zero)
         switch (key) {
             case Key::Zero: return mods.shift ? ")" : "0";
@@ -113,8 +129,11 @@ public:
             case Key::Seven: return mods.shift ? "&" : "7";
             case Key::Eight: return mods.shift ? "*" : "8";
             case Key::Nine: return mods.shift ? "(" : "9";
-            default: break;
+            default: return std::string();
         }
+    }
+
+    std::string translatePunctuation(Key key, const KeyModifiers& mods) {
         // Common US punctuation fallback with shift variants
         switch (key) {
             case Key::Minus: return mods.shift ? "_" : "-";
@@ -128,10 +147,16 @@ public:
             case Key::Dot: return mods.shift ? ">" : ".";
             case Key::Slash: return mods.shift ? "?" : "/";
             case Key::Backtick: return mods.shift ? "~" : "`";
-            default: break;
+            default: return std::string();
         }
-        if (key == Key::Space) return " ";
-        return std::string();
+    }
+
+    std::string translate(Key key, const KeyModifiers& mods) override {
+#if defined(HAVE_LIBXKBCOMMON)
+        std::string xkbResult = translateWithXkb(key, mods);
+        if (!xkbResult.empty()) return xkbResult;
+#endif
+        return translateFallback(key, mods);
     }
 
     bool sendKey(Key key, KeyEventType) override {

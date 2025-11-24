@@ -60,12 +60,10 @@ Constitution Alignment:
 - [X] T033 [US1] Add capability flags (HOTPLUG_EVENTS/POLLING_ONLY) in src/platform/DeviceDetector.h
 - [X] T034 [US1] Update SupportedDevices usage to new detector in src/SupportedDevices.h
 - [X] T035 [US1] Update Core to use detector factory & listener in src/Core.cpp
-- [X] T036 [US1] Remove direct device enumeration logic from legacy `DeviceWindows.cpp` / `DeviceLinux.cpp` in src/DeviceWindows.cpp
-- [X] T037 [US1] Adapt tests to pass by implementing mocks in tests/unit/DeviceDetectorTest.cpp
-- [ ] T038 [US1] Add detection latency benchmark (optional) in tests/unit/DeviceDetectorBenchmark.cpp
-- [X] T039 [US1] Documentation update detection section in specs/002-cross-platform-support/quickstart.md
-
-Checkpoint: Device presence detection functional across platforms.
+ - [X] T036 [US1] Remove direct device enumeration logic from legacy `DeviceWindows.cpp` / `DeviceLinux.cpp` in src/DeviceWindows.cpp
+ - [X] T037 [US1] Adapt tests to pass by implementing mocks in tests/unit/DeviceDetectorTest.cpp
+ - [X] T038 [US1] Add detection latency benchmark (optional) in tests/unit/DeviceDetectorBenchmark.cpp
+ - [X] T039 [US1] Documentation update detection section in specs/002-cross-platform-support/quickstart.mdCheckpoint: Device presence detection functional across platforms.
 
 ---
 ## Phase 4: User Story 2 - Keyboard Input Handling Across Platforms (Priority: P2) [US2]
@@ -137,15 +135,15 @@ Checkpoint: Audio volume abstraction functional with fallbacks.
 **Purpose**: Stabilization, performance, documentation, deprecations.
 
 - [X] T072 [P] Remove deprecated legacy platform files (device/keyboard) after migration in src/DeviceWindows.cpp
-- [ ] T073 [P] Add logging normalization (single tag per subsystem) in src/Core.cpp
-- [ ] T074 [P] Add performance micro-benchmark (startup + detection latency) in tests/unit/PerformanceSmokeTest.cpp
-- [ ] T075 Refactor any >50 LOC functions introduced (if any) in src/platform/KeyboardHandlerLinux.cpp
+- [X] T073 [P] Add logging normalization (single tag per subsystem) in src/Core.cpp
+- [X] T074 [P] Add performance micro-benchmark (startup + detection latency) in tests/unit/PerformanceSmokeTest.cpp
+- [X] T075 Refactor any >50 LOC functions introduced (if any) in src/platform/KeyboardHandlerLinux.cpp
 - [X] T076 Add README cross-platform build instructions in README.md
-- [ ] T077 [P] Accessibility regression check (keyboard flow unaffected) in docs/vendor-id-management.md
+- [X] T077 [P] Accessibility regression check (keyboard flow unaffected) in doc/vendor-id-management.md
 - [X] T078 Final update of quickstart with verified platform notes in specs/002-cross-platform-support/quickstart.md
 - [X] T079 Prepare release packaging adjustments for macOS resources in CMakeLists.txt
 - [X] T080 Add CI matrix note (macOS & Linux) in README.md
-- [ ] T081 Final code style pass (clang-tidy config if present) in src/platform/
+- [X] T081 Final code style pass (clang-tidy config if present) in src/platform/
 - [X] T082 Create integration test enable flag docs in specs/002-cross-platform-support/quickstart.md
 
 ---

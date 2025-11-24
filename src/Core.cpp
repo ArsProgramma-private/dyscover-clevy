@@ -19,6 +19,13 @@
 #include "Speech.h"
 #include "VersionInfo.h"
 
+// T073: Logging normalization - subsystem tags
+#define LOG_TAG_DEVICE "[Device] "
+#define LOG_TAG_KEYBOARD "[Keyboard] "
+#define LOG_TAG_AUDIO "[Audio] "
+#define LOG_TAG_SPEECH "[Speech] "
+#define LOG_TAG_CORE "[Core] "
+
 Core::Core(App* pApp, Config* pConfig, Device* pDevice)
 {
     m_pApp = pApp;
@@ -55,28 +62,44 @@ Core::Core(App* pApp, Config* pConfig, Device* pDevice)
         // Start monitoring for device hotplug events
         if (m_pDeviceDetector) {
             m_pDeviceDetector->startMonitoring();
+            wxLogInfo(LOG_TAG_DEVICE "Device detector initialized and monitoring started");
         }
     } catch (...) {
-        // swallow errors during early wiring
+        wxLogWarning(LOG_TAG_DEVICE "Failed to initialize device detector");
         m_pDeviceDetector.reset();
         m_pDeviceDetectorListener.reset();
     }
 
     try {
         m_pPlatformKeyboardHandler = CreateKeyboardHandler();
+        if (m_pPlatformKeyboardHandler) {
+            wxLogInfo(LOG_TAG_KEYBOARD "Platform keyboard handler initialized");
+        }
     } catch (...) {
+        wxLogWarning(LOG_TAG_KEYBOARD "Failed to initialize platform keyboard handler");
         m_pPlatformKeyboardHandler.reset();
     }
 
     try {
         m_pAudioController = CreateAudioController();
+        if (m_pAudioController && m_pAudioController->supported()) {
+            wxLogInfo(LOG_TAG_AUDIO "Audio controller initialized (backend: %d)", 
+                      static_cast<int>(m_pAudioController->backend()));
+        } else if (m_pAudioController) {
+            wxLogWarning(LOG_TAG_AUDIO "Audio controller created but backend unsupported");
+        }
     } catch (...) {
+        wxLogWarning(LOG_TAG_AUDIO "Failed to initialize audio controller");
         m_pAudioController.reset();
     }
 
     try {
         m_pResourceLocator = CreateResourceLocator();
+        if (m_pResourceLocator) {
+            wxLogInfo(LOG_TAG_CORE "Resource locator initialized");
+        }
     } catch (...) {
+        wxLogWarning(LOG_TAG_CORE "Failed to initialize resource locator");
         m_pResourceLocator.reset();
     }
 }
@@ -234,6 +257,7 @@ bool Core::OnKeyEvent(Key key, KeyEventType eventType, bool capsLock, bool shift
 
 void Core::OnClevyKeyboardConnected()
 {
+    wxLogInfo(LOG_TAG_DEVICE "Clevy keyboard connected");
     m_pSoundPlayer->PlaySoundFile("dyscover_connect_positive_with_voice.wav");
 
     m_bKeyboardConnected = true;
@@ -241,6 +265,7 @@ void Core::OnClevyKeyboardConnected()
 
 void Core::OnClevyKeyboardDisconnected()
 {
+    wxLogInfo(LOG_TAG_DEVICE "Clevy keyboard disconnected");
     m_pSoundPlayer->PlaySoundFile("dyscover_connect_negative_with_voice.wav");
 
     m_bKeyboardConnected = false;
