@@ -86,7 +86,12 @@ jobs:
         run: |
           mkdir -p ${CCACHE_DIR}
           ccache --version || sudo apt-get install -y ccache || true
-          cmake -S . -B build-full -DENABLE_CXX20=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake -S . -B build-full \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_CXX20=OFF \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_WITH_LIBRSTTS=OFF \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build (full product)
         run: cmake --build build-full --target Dyscover -j 2
@@ -303,6 +308,19 @@ jobs:
       steps:
         - uses: actions/checkout@v4
 
+        - name: Setup MSVC
+          uses: ilammy/msvc-dev-cmd@v1
+
+        - name: Setup vcpkg
+          uses: lukka/run-vcpkg@v11
+          with:
+            vcpkgGitCommitId: 'c8696863d371ab7f46e213d8f5ca923c4aef2a00'
+
+        - name: Install wxWidgets via vcpkg
+          shell: powershell
+          run: |
+            vcpkg install wxwidgets:x64-windows
+
         - name: Cache Windows build dir
           uses: actions/cache@v4
           with:
@@ -314,7 +332,12 @@ jobs:
         - name: Configure (Visual Studio generator x64)
           shell: powershell
           run: |
-            cmake -S . -B build-win -G "Visual Studio 17 2022" -A x64 -DENABLE_CXX20=OFF -DBUILD_WITH_LIBRSTTS=OFF -DBUILD_WITH_PORTAUDIO=OFF
+            cmake -S . -B build-win `
+              -G "Visual Studio 17 2022" -A x64 `
+              -DCMAKE_TOOLCHAIN_FILE="${env:VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" `
+              -DENABLE_CXX20=OFF `
+              -DBUILD_WITH_LIBRSTTS=OFF `
+              -DBUILD_WITH_PORTAUDIO=OFF
 
         - name: Build (full product)
           shell: powershell
