@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Production application manifest for Dyscover -->
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity version="4.0.5.0" processorArchitecture="*" name="clevy.dyscover.app" type="win32" />
+
+  <!-- Execution level: do not require elevation; allow normal user context -->
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+
+  <!-- OS compatibility declarations (Windows 10 + Windows 11). -->
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+      <!-- Windows 11 (same GUID as Win10 for forward compatibility) -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+    </application>
+  </compatibility>
+
+  <!-- Enable modern Common Controls (v6) for proper theming. -->
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*" />
+    </dependentAssembly>
+  </dependency>
+
+  <!-- Windows settings -->
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <!-- High DPI awareness for multi-monitor setups (prefer v2). -->
+      <dpiAware>true</dpiAware>
+      <dpiAwareness>PerMonitorV2</dpiAwareness>
+      <!-- Support long NT paths (>260). -->
+      <longPathAware>true</longPathAware>
+      <!-- Use UTF-8 as active code page (Windows 10 1903+). -->
+      <activeCodePage>UTF-8</activeCodePage>
+      <!-- Opt into modern heap implementation for potential perf gains. -->
+      <heapType>SegmentHeap</heapType>
+    </windowsSettings>
+  </application>
+
+  <!-- Opt out of legacy console assumptions; GUI app uses WIN32 subsystem already -->
+
+</assembly>

@@ -7,6 +7,10 @@ project(Dyscover
   LANGUAGES CXX
 )
 
+# Allow disabling packaging for faster local iteration (default: ON to preserve current behavior)
+option(PACKAGING_ENABLE "Enable CPack/WiX packaging configuration" ON)
+option(PACKAGING_DEBUG_SYMBOLS "Install debug symbols with package (PDB/dSYM)" OFF)
+
 option(ENABLE_CXX20 "Allow building with C++20 (optional)" OFF)
 if(ENABLE_CXX20)
   set(CMAKE_CXX_STANDARD 20)
@@ -62,6 +66,28 @@ add_executable(Dyscover WIN32
   src/platform/PlatformUtils.h
   src/platform/PlatformUtils.cpp
 )
+
+# macOS bundle metadata (applies only on Apple platforms)
+if(APPLE)
+  set_target_properties(Dyscover PROPERTIES MACOSX_BUNDLE TRUE
+    MACOSX_BUNDLE_GUI_IDENTIFIER "com.clevy.dyscover"
+    MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+    MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+  )
+endif()
+
+# Windows application manifest embedding (production settings)
+if(WIN32 AND MSVC)
+  # Manifest provides: asInvoker execution level, longPathAware, UTF-8 active code page,
+  # DPI awareness (per-monitor v2), common-controls v6, compatibility with Win10/Win11.
+  set(APP_MANIFEST "${CMAKE_SOURCE_DIR}/res/Dyscover.manifest")
+  if(EXISTS "${APP_MANIFEST}")
+    # Use Visual Studio property to embed manifest.
+    set_target_properties(Dyscover PROPERTIES VS_GLOBAL_ApplicationManifest "${APP_MANIFEST}")
+  else()
+    message(WARNING "Application manifest not found at ${APP_MANIFEST}; proceeding without it.")
+  endif()
+endif()
 
 # Ensure the main target can include project headers
 target_include_directories(Dyscover PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -547,7 +573,7 @@ add_custom_command(
 )
 
 # Installation
-install(TARGETS Dyscover RUNTIME DESTINATION .)
+install(TARGETS Dyscover RUNTIME DESTINATION . BUNDLE DESTINATION .)
 install(FILES ${LIBRSTTS_DLL_FILE} DESTINATION .)
 install(FILES ${SOUND_FILES} DESTINATION audio)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/res/data/tts/data/${TTS_LANG}.db DESTINATION tts/data/)
@@ -568,15 +594,21 @@ if(PLATFORM_NAME MATCHES "Windows")
   endif()
 endif()
 
-# Packaging
-set(CPACK_PACKAGE_NAME "Clevy Dyscover 4 ${LANG_NAME} ${LICENSING_NAME}")
-set(CPACK_PACKAGE_VENDOR "Alt. Medical B.V.")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "Clevy Dyscover 4")
-set(CPACK_PACKAGE_EXECUTABLES "Dyscover;Clevy Dyscover 4")
-set(CPACK_PACKAGE_FILE_NAME "Dyscover-${LANGUAGE}-${LICENSING}-${CMAKE_PROJECT_VERSION}-${PLATFORM_NAME}")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/res/License.rtf")
-if(WIN32)
-    set(CPACK_GENERATOR WIX)
+if(PACKAGING_ENABLE)
+  # Packaging
+  set(CPACK_PACKAGE_NAME "Clevy Dyscover 4 ${LANG_NAME} ${LICENSING_NAME}")
+  set(CPACK_PACKAGE_VENDOR "Alt. Medical B.V.")
+  set(CPACK_PACKAGE_INSTALL_DIRECTORY "Clevy Dyscover 4")
+  set(CPACK_PACKAGE_EXECUTABLES "Dyscover;Clevy Dyscover 4")
+  set(CPACK_PACKAGE_FILE_NAME "Dyscover-${LANGUAGE}-${LICENSING}-${CMAKE_PROJECT_VERSION}-${PLATFORM_NAME}")
+  set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/res/License.rtf")
+
+  # Base generators always available
+  set(CPACK_GENERATOR "TGZ;ZIP")
+
+  if(WIN32)
+    # Retain WiX as existing default MSI path. Squirrel / Inno handled externally via scripts.
+    list(APPEND CPACK_GENERATOR WIX)
     set(CPACK_WIX_UPGRADE_GUID 12C19B6B-BB03-4255-AD65-0A46D994886B) # NOTE: Never change this and never reuse in any other project.
     set(CPACK_WIX_PRODUCT_ICON ${CMAKE_CURRENT_SOURCE_DIR}/res/icons/Icon.ico)
     set(CPACK_WIX_PROGRAM_MENU_FOLDER "Clevy Dyscover 4")
@@ -584,5 +616,44 @@ if(WIN32)
     set(CPACK_WIX_PROPERTY_ARPHELPLINK "https://clevy.com/")
     set(CPACK_WIX_EXTENSIONS "WixUIExtension" "WixUtilExtension")
     set(CPACK_WIX_PATCH_FILE ${CMAKE_CURRENT_SOURCE_DIR}/CPackWixPatch.xml)
+  elseif(APPLE)
+    list(APPEND CPACK_GENERATOR DragNDrop)
+    set(CPACK_DMG_BACKGROUND_IMAGE "${CMAKE_CURRENT_SOURCE_DIR}/res/dmg-background.png")
+  elseif(UNIX)
+    # Attempt DEB/RPM for Linux if tooling available
+    list(APPEND CPACK_GENERATOR DEB RPM)
+    set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
+    set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+    set(CPACK_RPM_PACKAGE_GROUP "Utilities")
+  endif()
+  include(CPack)
 endif()
-include(CPack)
+
+# --- Debug Symbols Packaging ---
+if(PACKAGING_ENABLE AND PACKAGING_DEBUG_SYMBOLS)
+  message(STATUS "Debug symbol packaging enabled (PACKAGING_DEBUG_SYMBOLS=ON)")
+  if(WIN32 AND MSVC)
+    # Install PDB next to binary under symbols/
+    install(FILES $<TARGET_PDB_FILE:Dyscover> DESTINATION symbols OPTIONAL)
+  elseif(APPLE)
+    # Generate dSYM at install time via custom command (if dsymutil available)
+    find_program(DSYMUTIL dsymutil)
+    if(DSYMUTIL)
+      add_custom_command(TARGET Dyscover POST_BUILD
+        COMMAND ${DSYMUTIL} $<TARGET_FILE:Dyscover> -o $<TARGET_FILE:Dyscover>.dSYM
+        COMMENT "Generating dSYM bundle for Dyscover")
+      install(DIRECTORY $<TARGET_FILE:Dyscover>.dSYM DESTINATION symbols OPTIONAL)
+    else()
+      message(WARNING "dsymutil not found; cannot generate dSYM bundle")
+    endif()
+  elseif(UNIX)
+    # For Linux: copy stripped/unstripped pair (leave unstripped binary in symbols, strip release one)
+    add_custom_command(TARGET Dyscover POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:Dyscover>/symbols
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:Dyscover> $<TARGET_FILE_DIR:Dyscover>/symbols/Dyscover.debug
+      COMMAND ${CMAKE_OBJDUMP} --version >/dev/null 2>&1 || true
+      COMMAND ${CMAKE_STRIP} --strip-debug $<TARGET_FILE:Dyscover>
+      COMMENT "Saving unstripped binary and stripping release artifact")
+    install(FILES $<TARGET_FILE_DIR:Dyscover>/symbols/Dyscover.debug DESTINATION symbols OPTIONAL)
+  endif()
+endif()

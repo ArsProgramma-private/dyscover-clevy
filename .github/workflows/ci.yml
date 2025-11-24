@@ -95,6 +95,31 @@ jobs:
         run: |
           if [ -f build-full/Dyscover ]; then echo "Dyscover produced"; file build-full/Dyscover || true; else echo "No Dyscover executable found"; fi
 
+      - name: Verify hardening (Linux)
+        run: |
+          chmod +x scripts/verify-hardening.sh
+          if [ -f build-full/Dyscover ]; then ./scripts/verify-hardening.sh build-full/Dyscover || true; fi
+
+      - name: Audit dependencies (with SHA256)
+        run: |
+          chmod +x scripts/audit-deps.sh
+          if [ -f build-full/Dyscover ]; then ./scripts/audit-deps.sh Dyscover build-full > audit-linux.txt || true; cat audit-linux.txt; fi
+
+      - name: Generate SBOM
+        run: |
+          chmod +x scripts/generate-sbom.sh
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          if [ -f build-full/Dyscover ]; then ./scripts/generate-sbom.sh build-full/Dyscover || true; fi
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sbom-linux
+          path: |
+            sbom/
+            audit-linux.txt
+
   macos-build:
     name: macOS build (Clang >= 10)
     runs-on: macos-latest
@@ -245,6 +270,31 @@ jobs:
         - name: Build (full product)
           run: cmake --build build-mac --target Dyscover -j 2 || true
 
+        - name: Verify hardening (macOS)
+          run: |
+            chmod +x scripts/verify-hardening.sh
+            if [ -f build-mac/Dyscover ]; then ./scripts/verify-hardening.sh build-mac/Dyscover || true; fi
+
+        - name: Audit dependencies (with SHA256)
+          run: |
+            chmod +x scripts/audit-deps.sh
+            if [ -f build-mac/Dyscover ]; then ./scripts/audit-deps.sh Dyscover build-mac > audit-macos.txt || true; cat audit-macos.txt; fi
+
+        - name: Generate SBOM
+          run: |
+            chmod +x scripts/generate-sbom.sh
+            curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+            if [ -f build-mac/Dyscover ]; then ./scripts/generate-sbom.sh build-mac/Dyscover || true; fi
+
+        - name: Upload SBOM artifacts
+          uses: actions/upload-artifact@v4
+          if: always()
+          with:
+            name: sbom-macos
+            path: |
+              sbom/
+              audit-macos.txt
+
   windows-full-build:
       name: Windows full product build
       runs-on: windows-2022
@@ -270,3 +320,22 @@ jobs:
           shell: powershell
           run: |
             cmake --build build-win --config Release --target Dyscover || true
+
+        - name: Verify hardening (Windows)
+          shell: powershell
+          run: |
+            if (Test-Path build-win\Release\Dyscover.exe) { pwsh .\scripts\verify-hardening.ps1 -Binary build-win\Release\Dyscover.exe } else { Write-Host 'Binary not found' }
+          continue-on-error: true
+
+        - name: Audit dependencies (with SHA256)
+          shell: powershell
+          run: |
+            if (Test-Path build-win\Release\Dyscover.exe) { pwsh .\scripts\audit-deps.ps1 -Target Dyscover.exe -BuildDir build-win\Release | Tee-Object -FilePath audit-windows.txt; Get-Content audit-windows.txt }
+          continue-on-error: true
+
+        - name: Upload audit artifacts
+          uses: actions/upload-artifact@v4
+          if: always()
+          with:
+            name: audit-windows
+            path: audit-windows.txt

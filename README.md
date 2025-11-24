@@ -117,6 +117,19 @@ This repository now includes a GitHub Actions CI workflow which verifies C++17 c
 
 **Integration Tests:** Run on self-hosted runners with `hardware` label (requires physical USB devices). Manually triggered via workflow dispatch with `run_integration=true` and `INTEGRATION_RUN_TOKEN` secret configured.
 
+### CI Security & Compliance Gates
+Full product build jobs now include automated quality checks:
+
+- **Hardening Verification:** Each platform runs `verify-hardening.sh` / `verify-hardening.ps1` to confirm PIE/ASLR, NX/DEP, RELRO, and code signing status.
+- **Dependency Audit:** Extended audit scripts (`audit-deps.sh` / `audit-deps.ps1`) output SHA256 hashes of all linked libraries plus RPATH/LC_RPATH inspection. Results uploaded as CI artifacts.
+- **SBOM Generation:** Linux and macOS jobs generate CycloneDX SBOM + license matrix using `syft` and upload to artifacts (`sbom-linux`, `sbom-macos`).
+
+Artifacts available after each CI run:
+- `sbom-linux` / `sbom-macos`: CycloneDX JSON, license CSV, audit logs
+- `audit-windows`: Windows dependency audit with SHA256 hashes
+
+Future: Automated signature chain verification and SBOM diff analysis on PRs.
+
 CI caching and faster builds
 --------------------------
 
@@ -264,5 +277,208 @@ Locally you can enable integration tests with:
 cmake -S . -B build-integration -DBUILD_TESTS=ON -DBUILD_INTEGRATION_TESTS=ON
 cmake --build build-integration --target Integration-DeviceDetectionStaticList
 ctest --test-dir build-integration --output-on-failure
+
+Cross-Platform Build Guide
+--------------------------
+This section provides a production-oriented matrix of build options for each supported platform, including prerequisites, alternative toolchains, and canonical commands. Use the provided helper scripts in `scripts/` for reproducibility.
+
+Windows
+-------
+Options:
+1. MSVC Build Tools + Visual Studio generator (recommended)
+2. MSVC Build Tools + Ninja generator (fast single-config)
+3. MinGW-w64 (native or cross) via `-Generator MinGW`
+4. Cross-compile from Linux using MinGW-w64 toolchain file
+
+Prerequisites:
+- Common: CMake ≥3.15, wxWidgets 3.2 (built for chosen toolchain), librstts DLL, optional PortAudio, gettext.
+- MSVC: Install "Visual Studio Build Tools" with Windows 11 SDK + C++ core features. Optional: Ninja component.
+- MinGW native: MSYS2 with packages: `mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-wxwidgets mingw-w64-x86_64-gettext` (and PortAudio if needed).
+- Cross (Linux→Windows): `mingw-w64`, custom-built wxWidgets for target or prebuilt distribution.
+
+Commands:
+MSVC (multi-config):
+```powershell
+pwsh ./scripts/build-windows.ps1 -Config Release -Generator MSVC -Language nl -Licensing demo -Tests On -Package On -CopyDeps On
 ```
+MSVC + Ninja (single-config Release):
+```powershell
+pwsh ./scripts/build-windows.ps1 -Config Release -Generator Ninja -Language nl -Licensing demo -Tests On -Package On -CopyDeps On
+```
+MinGW (MSYS2 shell):
+```bash
+./scripts/build-windows.ps1 -Config Release -Generator MinGW -Language nl -Licensing demo -Package On -CopyDeps On
+```
+Cross (Linux):
+```bash
+./scripts/build-windows-cross-mingw.sh -c Release -l nl -L demo --package
+```
+Manual cross invocation:
+```bash
+cmake -S . -B build-cross -DCMAKE_TOOLCHAIN_FILE=scripts/toolchains/mingw-w64-x86_64.cmake -DCMAKE_BUILD_TYPE=Release -DLANGUAGE=nl -DLICENSING=demo
+cmake --build build-cross --target Dyscover -j$(nproc)
+```
+
+macOS
+-----
+Options:
+1. Clang + CMake (Intel only)
+2. Universal build (x86_64 + arm64) via `--universal`
+3. Ninja generator (optional for speed)
+
+Prerequisites:
+- Xcode command line tools (provides clang & SDKs)
+- Homebrew: `brew install wxwidgets portaudio gettext cmake ninja`
+- librstts macOS binary in `lib/rstts/platforms/x86_64-apple-darwin/` (and arm64 if universal later)
+
+Commands:
+Standard Intel Release:
+```bash
+./scripts/build-macos.sh -c Release -l nl -L demo --package
+```
+Universal:
+```bash
+./scripts/build-macos.sh -c Release --universal -l nl -L demo --package
+```
+Ninja single-config (manual):
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLANGUAGE=nl -DLICENSING=demo
+cmake --build build -j$(sysctl -n hw.ncpu)
+```
+
+Linux
+-----
+Options:
+1. GCC or Clang native build
+2. With/without PulseAudio, ALSA fallback
+3. Optional benchmarks (`--bench`)
+
+Prerequisites (Debian/Ubuntu example): see earlier dependency list.
+
+Commands:
+Release build with tests + benchmarks + packaging:
+```bash
+./scripts/build-linux.sh -c Release -l nl -L demo --bench --package
+```
+Minimal no-tests debug:
+```bash
+./scripts/build-linux.sh --no-tests
+```
+
+ChromeOS (Crostini)
+-------------------
+Options mirror Linux. Some hardware APIs may degrade gracefully.
+
+Prerequisites:
+- Same as Linux; ensure `libudev-dev` accessible in container
+- Optional audio libs for volume control (PulseAudio/ALSA)
+
+Commands:
+```bash
+./scripts/build-chromeos.sh -c Release -l nl -L demo --package
+```
+If sandbox restricts device/audio APIs the app logs capability fallback.
+
+Common Flags & Modes
+--------------------
+Licensing:
+- `-L demo` or `-DLICENSING=demo` sets demo mode.
+- `full` enables full licensing paths.
+- `none` for development.
+
+Language:
+- `-l nl` (Dutch), `-l nl_be` (Flemish).
+
+Tests & Integration:
+- Disable tests: `--no-tests` or `-DBUILD_TESTS=OFF`
+- Enable integration tests: `--integration` or `-DBUILD_INTEGRATION_TESTS=ON`
+
+Benchmark Targets:
+- `DeviceDetectorBenchmark` and `PerformanceSmokeTest` built when tests enabled; invoked automatically with `--bench` on Linux script.
+
+Packaging Notes
+---------------
+Windows:
+- `-Package On -CopyDeps On` collects `Dyscover.exe` + common runtime DLLs into `dist-windows-<Config>`.
+- For installer creation consider WiX Toolset or NSIS (future enhancement).
+
+macOS:
+- Current packaging step copies binary only; for distribution create an app bundle (`Dyscover.app`) with Info.plist, resources, and codesign.
+
+Linux / ChromeOS:
+- Packaging produces `dist-linux-<Config>/Dyscover`. For distribution create `.deb` or `.rpm` using CPack or custom scripts.
+
+Cross-Compilation Caveats
+--------------------------
+- Cross-building Windows from Linux lacks automatic dependency resolution for wxWidgets; prefer native build for release artifacts.
+- Ensure architecture consistency (no mixing x86 DLLs into x64 builds).
+- Test runtime on target OS before release.
+
+Verification Checklist
+----------------------
+1. Binary starts without missing DLL errors.
+2. Device detection reports capabilities flags correctly.
+3. Keyboard translation tests pass (`KeyboardHandlerTranslateTest`).
+4. Audio controller selects backend (or reports unsupported gracefully).
+5. Resource locator returns platform-specific icon paths.
+6. Manifest embedded (Windows MSVC): extract using `mt.exe -inputresource:Dyscover.exe;#1 -out:manifest.xml`.
+
+Troubleshooting Quick Reference
+-------------------------------
+| Symptom | Likely Cause | Fix |
+|---------|--------------|-----|
+| Missing wx DLL on Windows | Not copied by `-CopyDeps` | Manually copy from wx build lib dir |
+| No audio volume control | Missing PulseAudio/ALSA/CoreAudio | Install dev packages / frameworks |
+| Unsupported device detection on ChromeOS | Sandbox restrictions | Polling fallback active (expected) |
+| Build fails finding librstts | Binary absent for platform | Place DLL/SO in `lib/rstts/platforms/<platform>` |
+| Tests crash on headless Linux | xkbcommon unavailable | Install `libxkbcommon-dev` or skip tests |
+
+```
+
+Packaging Extensions
+--------------------
+New packaging & audit assets have been added:
+
+- CPack toggle: enable/disable via `-DPACKAGING_ENABLE=ON|OFF` (default ON). Generators: WiX (Windows), DragNDrop DMG (macOS), TGZ/ZIP (all), DEB/RPM (Linux if tools present).
+- macOS bundle script: `./scripts/package-macos.sh` builds a `.app` + signed DMG (when `--sign` used). Optional universal binary with `--universal`.
+- Codesign helper: `./scripts/macos-codesign-example.sh <path/to/Dyscover.app> "Developer ID Application: Corp (TEAMID)"` performs deep signing.
+- Dependency audit (Linux/macOS): `./scripts/audit-deps.sh Dyscover build` lists dynamic libs & missing entries.
+- Dependency audit (Windows): `pwsh ./scripts/audit-deps.ps1 -Target Dyscover.exe -BuildDir build` (requires VS dev tools in PATH for `dumpbin`).
+- Windows Inno Setup template: `scripts/package-windows-inno.iss` (compile with `iscc`). Use `/DSourceDir=dist-windows-Release` pointing at staging folder produced by existing build scripts.
+- Windows Squirrel (experimental): `pwsh ./scripts/package-windows-squirrel.ps1` produces a NuGet-based update package (requires `dotnet tool install --global SquirrelCli`). Prefer WiX or Inno for stable native distribution.
+
+Recommended Flow:
+1. Build product artifacts (e.g. `pwsh ./scripts/build-windows.ps1 -Config Release -Package On -CopyDeps On`).
+2. Audit dependencies before packaging.
+3. Run chosen packager: WiX (default CPack), Inno (`iscc`), or Squirrel (experimental).
+4. macOS: create & sign DMG via `package-macos.sh --sign "Developer ID Application: ..."` then notarize externally.
+
+Notes:
+- Squirrel.Windows is primarily designed for managed/Electron apps; native C++ usage is supported but less common. Treat its artifacts as experimental until validated.
+- Inno Setup template generates a lightweight installer; adjust icon, license path, and add registry entries as needed.
+- For Linux DEB/RPM output ensure `fakeroot`, `rpmbuild`, and requisite tooling are installed; otherwise CPack silently skips those generators.
+- Disable packaging during inner-loop development to speed CMake config: `cmake -S . -B build -DPACKAGING_ENABLE=OFF`.
+
+Release Hardening & Compliance
+------------------------------
+New security and provenance tooling:
+
+- Debug Symbols: enable `-DPACKAGING_DEBUG_SYMBOLS=ON` to package PDB (Windows), dSYM (macOS), or unstripped debug copy (Linux).
+- Notarization (macOS): after signing DMG run `./scripts/notarize-macos.sh dist-macos-Release/Dyscover-<...>.dmg` with `APPLE_NOTARY_KEY_ID`, `APPLE_NOTARY_ISSUER`, `APPLE_NOTARY_KEY_FILE` env vars.
+- SBOM & Licenses: `./scripts/generate-sbom.sh build/Dyscover` outputs `sbom/cyclonedx.json` + `sbom/licenses.csv` (requires `syft`).
+- Dependency Audit (extended): now prints SHA256 + RPATH (`audit-deps.sh` / `audit-deps.ps1`).
+- Hardening Verification: `./scripts/verify-hardening.sh build/Dyscover` or `pwsh ./scripts/verify-hardening.ps1 -Binary build\Dyscover.exe` checks PIE/ASLR/NX/RELRO and code signing.
+- Authenticode Signing: `pwsh ./scripts/sign-windows.ps1 -Binary build\Dyscover.exe -CertFile cert.pfx -Password '...'` adds SHA256 + timestamp.
+
+Recommended Release Checklist:
+1. Build release artifacts with packaging + symbols.
+2. Run hardening + audit scripts; fix any warnings.
+3. Generate SBOM; archive with build outputs.
+4. Sign Windows binary; create installer (WiX/Inno); verify signature.
+5. macOS: sign bundle & DMG, notarize, staple.
+6. Publish artifacts with SBOM, checksums, and separate symbols directory.
+
+Future Enhancements:
+- Optional delta updates (Squirrel) once native path validated.
+- Automated CI gates for SBOM diff & signing chain verification.
 ```

@@ -1,0 +1,344 @@
+name: Release Build & Package
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 4.0.5.0)'
+        required: true
+        default: '4.0.5.0'
+
+env:
+  CMAKE_VERSION: '3.27.0'
+  VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+
+jobs:
+  prepare-matrix:
+    name: Prepare Build Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            echo "tag=manual-${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            TAG=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG#v}
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+          fi
+
+  build-windows:
+    name: Windows Release Build
+    needs: prepare-matrix
+    runs-on: windows-2022
+    strategy:
+      matrix:
+        language: [nl, nl_be]
+        licensing: [demo, full]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: 'c8696863d371ab7f46e213d8f5ca923c4aef2a00'
+
+      - name: Install vcpkg dependencies
+        run: |
+          vcpkg install wxwidgets:x64-windows portaudio:x64-windows gettext:x64-windows
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: ${{ env.CMAKE_VERSION }}
+
+      - name: Configure & Build
+        shell: powershell
+        run: |
+          cmake -S . -B build `
+            -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="${env:VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DLANGUAGE=${{ matrix.language }} `
+            -DLICENSING=${{ matrix.licensing }} `
+            -DPACKAGING_ENABLE=ON `
+            -DPACKAGING_DEBUG_SYMBOLS=ON `
+            -DBUILD_TESTS=OFF
+          cmake --build build --config Release --target Dyscover -j 4
+
+      - name: Copy dependencies
+        shell: powershell
+        run: |
+          $dist = "dist-windows-Release"
+          New-Item -Force -ItemType Directory $dist
+          Copy-Item build/Release/Dyscover.exe $dist/
+          
+          # Copy wxWidgets DLLs
+          $wxDlls = Get-ChildItem "${env:VCPKG_ROOT}/installed/x64-windows/bin/wx*.dll"
+          foreach ($dll in $wxDlls) { Copy-Item $dll.FullName $dist/ }
+          
+          # Copy PortAudio if present
+          if (Test-Path "${env:VCPKG_ROOT}/installed/x64-windows/bin/portaudio*.dll") {
+            Copy-Item "${env:VCPKG_ROOT}/installed/x64-windows/bin/portaudio*.dll" $dist/
+          }
+          
+          # Copy librstts
+          if (Test-Path "lib/rstts/platforms/x86_64-pc-win64/librstts-2.dll") {
+            Copy-Item "lib/rstts/platforms/x86_64-pc-win64/librstts-2.dll" $dist/
+          }
+          
+          # Copy audio and TTS data
+          if (Test-Path "build/Release/audio") { Copy-Item -Recurse build/Release/audio $dist/ }
+          if (Test-Path "build/Release/tts") { Copy-Item -Recurse build/Release/tts $dist/ }
+
+      - name: Sign binaries
+        if: env.SIGNING_CERT_BASE64 != ''
+        env:
+          SIGNING_CERT_BASE64: ${{ secrets.WINDOWS_SIGNING_CERT }}
+          SIGNING_CERT_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
+        shell: powershell
+        run: |
+          $certBytes = [Convert]::FromBase64String($env:SIGNING_CERT_BASE64)
+          $certPath = Join-Path $env:TEMP "cert.pfx"
+          [IO.File]::WriteAllBytes($certPath, $certBytes)
+          
+          pwsh ./scripts/sign-windows.ps1 `
+            -Binary dist-windows-Release/Dyscover.exe `
+            -CertFile $certPath `
+            -Password $env:SIGNING_CERT_PASSWORD
+          
+          Remove-Item $certPath
+
+      - name: Run security audit
+        shell: powershell
+        continue-on-error: true
+        run: |
+          pwsh ./scripts/verify-hardening.ps1 -Binary dist-windows-Release/Dyscover.exe
+          pwsh ./scripts/audit-deps.ps1 -Target Dyscover.exe -BuildDir dist-windows-Release
+
+      - name: Create Inno Setup installer
+        shell: powershell
+        run: |
+          choco install innosetup -y
+          $env:PATH += ";C:\Program Files (x86)\Inno Setup 6"
+          
+          iscc scripts/package-windows-inno.iss `
+            /DSourceDir=dist-windows-Release `
+            /DOutputDir=installer `
+            /DAppVersion=${{ needs.prepare-matrix.outputs.version }} `
+            /DLanguage=${{ matrix.language }} `
+            /DLicensing=${{ matrix.licensing }}
+
+      - name: Create ZIP archive
+        shell: powershell
+        run: |
+          $name = "Dyscover-${{ matrix.language }}-${{ matrix.licensing }}-${{ needs.prepare-matrix.outputs.version }}-win64"
+          Compress-Archive -Path dist-windows-Release/* -DestinationPath "$name.zip"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.language }}-${{ matrix.licensing }}
+          path: |
+            Dyscover-*.zip
+            installer/*.exe
+            build/Release/symbols/
+
+  build-macos:
+    name: macOS Release Build
+    needs: prepare-matrix
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        language: [nl, nl_be]
+        licensing: [demo, full]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install wxwidgets portaudio gettext cmake ninja syft jq
+
+      - name: Configure & Build
+        run: |
+          cmake -S . -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" \
+            -DLANGUAGE=${{ matrix.language }} \
+            -DLICENSING=${{ matrix.licensing }} \
+            -DPACKAGING_ENABLE=ON \
+            -DPACKAGING_DEBUG_SYMBOLS=ON \
+            -DBUILD_TESTS=OFF
+          cmake --build build --target Dyscover -j $(sysctl -n hw.ncpu)
+
+      - name: Create .app bundle
+        run: |
+          chmod +x scripts/package-macos.sh
+          ./scripts/package-macos.sh \
+            -c Release \
+            -l ${{ matrix.language }} \
+            -L ${{ matrix.licensing }}
+
+      - name: Sign & Notarize (if credentials available)
+        if: env.APPLE_SIGNING_IDENTITY != ''
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER: ${{ secrets.APPLE_NOTARY_ISSUER }}
+          APPLE_NOTARY_KEY_FILE: ${{ secrets.APPLE_NOTARY_KEY_FILE }}
+        run: |
+          chmod +x scripts/package-macos.sh scripts/notarize-macos.sh
+          
+          ./scripts/package-macos.sh \
+            -c Release \
+            -l ${{ matrix.language }} \
+            -L ${{ matrix.licensing }} \
+            --sign "$APPLE_SIGNING_IDENTITY"
+          
+          DMG=$(ls dist-macos-Release/Dyscover-*.dmg | head -1)
+          echo "$APPLE_NOTARY_KEY_FILE" > AuthKey.p8
+          ./scripts/notarize-macos.sh "$DMG"
+          rm AuthKey.p8
+
+      - name: Run security audit
+        continue-on-error: true
+        run: |
+          chmod +x scripts/verify-hardening.sh scripts/audit-deps.sh scripts/generate-sbom.sh
+          ./scripts/verify-hardening.sh build/Dyscover
+          ./scripts/audit-deps.sh Dyscover build
+          ./scripts/generate-sbom.sh build/Dyscover
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.language }}-${{ matrix.licensing }}
+          path: |
+            dist-macos-Release/*.dmg
+            dist-macos-Release/Dyscover.app/
+            build/symbols/
+            sbom/
+
+  build-linux:
+    name: Linux Release Build
+    needs: prepare-matrix
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        language: [nl, nl_be]
+        licensing: [demo, full]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake ninja-build pkg-config \
+            libwxgtk3.0-gtk3-dev \
+            libudev-dev \
+            libasound2-dev \
+            libpulse-dev \
+            portaudio19-dev \
+            gettext \
+            dpkg-dev \
+            rpmbuild \
+            fakeroot \
+            jq
+          
+          # Install syft for SBOM
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Configure & Build
+        run: |
+          cmake -S . -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLANGUAGE=${{ matrix.language }} \
+            -DLICENSING=${{ matrix.licensing }} \
+            -DPACKAGING_ENABLE=ON \
+            -DPACKAGING_DEBUG_SYMBOLS=ON \
+            -DBUILD_TESTS=OFF
+          cmake --build build --target Dyscover -j $(nproc)
+
+      - name: Create packages
+        run: |
+          cd build
+          cpack -G "DEB;RPM;TGZ"
+
+      - name: Run security audit
+        continue-on-error: true
+        run: |
+          chmod +x scripts/verify-hardening.sh scripts/audit-deps.sh scripts/generate-sbom.sh
+          ./scripts/verify-hardening.sh build/Dyscover
+          ./scripts/audit-deps.sh Dyscover build
+          ./scripts/generate-sbom.sh build/Dyscover
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.language }}-${{ matrix.licensing }}
+          path: |
+            build/*.deb
+            build/*.rpm
+            build/*.tar.gz
+            build/symbols/
+            sbom/
+
+  create-release:
+    name: Create GitHub Release
+    needs: [prepare-matrix, build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Generate checksums
+        run: |
+          cd release-artifacts
+          find . -type f \( -name "*.zip" -o -name "*.exe" -o -name "*.dmg" -o -name "*.deb" -o -name "*.rpm" -o -name "*.tar.gz" \) -exec sha256sum {} \; > SHA256SUMS.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ needs.prepare-matrix.outputs.version }}
+          draft: true
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            release-artifacts/**/*.zip
+            release-artifacts/**/*.exe
+            release-artifacts/**/*.dmg
+            release-artifacts/**/*.deb
+            release-artifacts/**/*.rpm
+            release-artifacts/**/*.tar.gz
+            release-artifacts/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-sbom-all
+          path: release-artifacts/**/sbom/
+
+      - name: Upload debug symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-symbols-all
+          path: release-artifacts/**/symbols/
