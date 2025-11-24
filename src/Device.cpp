@@ -6,9 +6,11 @@
 
 #include "Device.h"
 
-#ifdef WIN32
+#ifdef __PLATFORM_WINDOWS__
 #include "DeviceWindows.h"
-#else
+#elif defined(__PLATFORM_MAC__)
+#include "DeviceMac.h"
+#elif defined(__PLATFORM_LINUX__)
 #include "DeviceLinux.h"
 #endif
 
@@ -16,10 +18,15 @@
 
 Device* Device::Create(IDeviceListener* pListener)
 {
-#ifdef WIN32
+#ifdef __PLATFORM_WINDOWS__
     return new DeviceWindows(pListener);
-#else
+#elif defined(__PLATFORM_MAC__)
+    return new DeviceMac(pListener);
+#elif defined(__PLATFORM_LINUX__)
     return new DeviceLinux(pListener);
+#else
+    (void)pListener;
+    return nullptr;
 #endif
 }
 

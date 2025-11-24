@@ -110,10 +110,13 @@ if(WIN32)
   target_link_libraries(Dyscover PRIVATE winmm.lib)
 elseif(APPLE)
   add_compile_definitions(__PLATFORM_MAC__)
-  # (Future) macOS-specific platform source additions will go here
+  target_sources(Dyscover PRIVATE src/DeviceMac.cpp src/DeviceMac.h)
+  # Reuse the Linux keyboard glue for now; translation is platform-agnostic
+  target_sources(Dyscover PRIVATE src/KeyboardLinux.cpp src/KeyboardLinux.h)
   target_sources(Dyscover PRIVATE src/platform/DeviceDetectorMac.cpp)
   # Add platform audio controller implementation
   target_sources(Dyscover PRIVATE src/platform/AudioControllerMac.cpp)
+  target_sources(Dyscover PRIVATE src/platform/KeyboardHandlerMac.cpp)
   find_library(COREAUDIO_LIBRARY CoreAudio REQUIRED)
   find_library(AUDIOTOOLBOX_LIBRARY AudioToolbox REQUIRED)
   target_link_libraries(Dyscover PRIVATE ${COREAUDIO_LIBRARY} ${AUDIOTOOLBOX_LIBRARY})
