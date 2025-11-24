@@ -34,7 +34,7 @@ namespace {
             if (m_deviceID == kAudioObjectUnknown) return -1;
             
             AudioObjectPropertyAddress propertyAddress = {
-                kAudioHardwareServiceDeviceProperty_VirtualMasterVolume,
+                kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
                 kAudioDevicePropertyScopeOutput,
                 kAudioObjectPropertyElementMain
             };
