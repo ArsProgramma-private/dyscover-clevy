@@ -113,7 +113,7 @@ jobs:
               workflow_id: wf,
               status: 'completed',
               conclusion: 'success',
-              per_page: 10,  // Check last 10 successful runs
+              per_page: 20,  // Check last 20 successful runs
             })
             
             if (runs.data.workflow_runs.length === 0) {
