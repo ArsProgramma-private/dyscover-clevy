@@ -31,14 +31,13 @@ jobs:
           '@
           $manifest | Out-File -FilePath vcpkg.json -Encoding utf8
 
-      - name: Clone vcpkg
-        run: |
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git $VCPKG_ROOT
-          cd $VCPKG_ROOT
-          # pin to a known commit used across workflows
-          git fetch --depth 1 origin 75cdbf55732bc8f36e8286d0254feb8083a6dd2a
-          git checkout 75cdbf55732bc8f36e8286d0254feb8083a6dd2a
-          .\bootstrap-vcpkg.bat -disableMetrics
+      - name: Checkout microsoft/vcpkg
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          path: vcpkg
+          ref: 75cdbf55732bc8f36e8286d0254feb8083a6dd2a
+          fetch-depth: 1
 
       - name: Restore vcpkg cache
         uses: actions/cache@v4
@@ -53,14 +52,21 @@ jobs:
             vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-
             vcpkg-${{ runner.os }}-
 
+      - name: Bootstrap vcpkg
+        shell: pwsh
+        working-directory: vcpkg
+        run: |
+          .\bootstrap-vcpkg.bat -disableMetrics
+
       - name: Install vcpkg packages
         id: vcpkg-install
+        shell: pwsh
+        working-directory: vcpkg
         run: |
-          cd $VCPKG_ROOT
           if (Test-Path installed/x64-windows) {
-            echo "Cache restored, verifying packages..."
+            Write-Host "Cache restored, verifying packages..."
           }
-          ./vcpkg install --recurse --clean-after-build --triplet $env:VCPKG_DEFAULT_TRIPLET
+          .\vcpkg.exe install --recurse --clean-after-build --triplet $env:VCPKG_DEFAULT_TRIPLET
 
       - name: Save vcpkg cache (no-op if already up-to-date)
         uses: actions/cache@v4
