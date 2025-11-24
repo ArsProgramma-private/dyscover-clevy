@@ -91,6 +91,7 @@ jobs:
             vcpkg/buildtrees
           key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
           restore-keys: |
+            vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a
             vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-
             vcpkg-${{ runner.os }}-
 
@@ -180,6 +181,7 @@ jobs:
             vcpkg/buildtrees
           key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
           restore-keys: |
+            vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a
             vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-
             vcpkg-${{ runner.os }}-
 
