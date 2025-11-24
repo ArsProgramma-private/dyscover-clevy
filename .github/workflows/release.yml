@@ -53,7 +53,10 @@ jobs:
           $manifest = @'
           {
             "dependencies": [
-              "wxwidgets[core,debug-support,sound]",
+              {
+                "name": "wxwidgets",
+                "features": ["core", "debug-support", "sound"]
+              },
               "portaudio",
               "gettext"
             ]
@@ -191,7 +194,7 @@ jobs:
           cmake -S . -B build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_FLAGS="-Wno-error=missing-field-initializers" \
+            -DCMAKE_CXX_FLAGS="-Wno-error=missing-field-initializers -Wno-error=unused-const-variable" \
             -DBUILD_WITH_LIBRSTTS=OFF \
             -DLANGUAGE=${{ matrix.language }} \
             -DLICENSING=${{ matrix.licensing }} \
