@@ -162,15 +162,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create test file
-        run: |
-          echo #include <iostream> > test.cpp
-          echo int main(){ std::cout << __cplusplus << '\n'; return 0; } >> test.cpp
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Compile with MSVC (check C++17)
+      - name: Create and compile test file
         shell: cmd
         run: |
-          cl /EHsc /std:c++17 test.cpp
+          echo #include ^<iostream^> > test.cpp
+          echo int main(){ std::cout ^<^< __cplusplus ^<^< std::endl; return 0; } >> test.cpp
+          cl /EHsc /std:c++17 test.cpp /Fe:test.exe
+          test.exe
 
   linux-cxx20:
     name: Linux C++20 validation
