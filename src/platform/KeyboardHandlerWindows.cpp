@@ -57,11 +57,6 @@ static int KeyCodeFromKey(Key key) {
     return -1;
 }
 
-static Key KeyFromKeyCode(int code) {
-    for (auto m : s_keyMappings) if (m.code == code) return m.key;
-    return Key::Unknown;
-}
-
 class KeyboardHandlerWindows : public IKeyboardHandler {
 public:
     KeyboardHandlerWindows() = default;

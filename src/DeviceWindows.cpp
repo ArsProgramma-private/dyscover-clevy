@@ -60,7 +60,7 @@ bool DeviceWindows::DoesContainClevyKeyboard(DEVINST hDevice)
 
             // Check if it matches known Clevy Keyboard hardware IDs
             std::string vid, pid;
-            if (extractVidPid(szHardwareId, vid, pid)) {
+            if (this->extractVidPid(szHardwareId, vid, pid)) {
                 if (IsSupported(vid, pid)) {
                     return true;
                 }

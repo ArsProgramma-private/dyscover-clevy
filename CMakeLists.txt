@@ -99,6 +99,7 @@ target_compile_definitions(Dyscover PRIVATE __USE_PLATFORM_AUDIO__)
 # Platform-specifics
 if(WIN32)
   add_compile_definitions(__PLATFORM_WINDOWS__)
+  add_compile_definitions(WIN32_LEAN_AND_MEAN)  # Prevent winsock.h/winsock2.h conflicts with wxWidgets
   target_sources(Dyscover PRIVATE src/DeviceWindows.cpp src/DeviceWindows.h)
   target_link_libraries(Dyscover PRIVATE cfgmgr32.lib)
   target_sources(Dyscover PRIVATE src/KeyboardWindows.cpp src/KeyboardWindows.h)
