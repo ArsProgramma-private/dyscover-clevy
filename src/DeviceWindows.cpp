@@ -55,8 +55,8 @@ bool DeviceWindows::DoesContainClevyKeyboard(DEVINST hDevice)
         CONFIGRET cr = CM_Get_DevNode_Registry_Property(hDevice, CM_DRP_HARDWAREID, nullptr, szHardwareId, &ulHardwareId, 0);
         if (cr == CR_SUCCESS)
         {
-            // Convert to upper case
-            _tcsupr(szHardwareId);
+            // Convert to upper case (safe replacement for deprecated _tcsupr)
+            CharUpperBuff(szHardwareId, static_cast<DWORD>(_tcslen(szHardwareId)));
 
             // Check if it matches known Clevy Keyboard hardware IDs
             std::string vid, pid;
