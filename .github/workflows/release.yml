@@ -81,7 +81,7 @@ jobs:
       # Use a stable vcpkg cache key that includes the pinned vcpkg commit id and
       # the vcpkg/versions/** content hash. This prevents tiny differences in the
       # generated vcpkg.json (line endings/whitespace) from causing cache misses.
-      - name: Cache vcpkg packages
+      # Cache vcpkg packages
         id: vcpkg-cache-restore
         uses: actions/cache@v4
         with:
@@ -89,15 +89,11 @@ jobs:
             vcpkg/installed
             vcpkg/packages
             vcpkg/buildtrees
-          # Primary key: canonical cache keyed by pinned vcpkg commit (shared
-          # across branches/tags). This lets Release restore a prebuilt cache
-          # created on another ref (e.g. a branch prebuild or scheduled prebuild)
-          # when the package versions hash differs between refs.
-          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a
-          # Fallback keys (try the exact versions-hash keyed cache next, then
-          # finally the runner-only prefix).
+          # Primary key: versions-hash keyed cache (matches prebuild exactly)
+          # This ensures we hit the existing cache without needing prebuild on tags
+          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
+          # Fallback keys for cross-ref reuse
           restore-keys: |
-            vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
             vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-
             vcpkg-${{ runner.os }}-
 
@@ -185,12 +181,10 @@ jobs:
             vcpkg/installed
             vcpkg/packages
             vcpkg/buildtrees
-          # Same ordering for the post-prebuild restore: try the canonical
-          # cache first (which is likely to exist from scheduled/branch
-          # prebuilds), then try the versions-hash keyed cache.
-          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a
+          # Same ordering: try the versions-hash cache first (which should exist),
+          # then canonical, then commit prefix.
+          key: vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
           restore-keys: |
-            vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-${{ hashFiles('vcpkg/versions/**') }}
             vcpkg-${{ runner.os }}-vcpkg-75cdbf55732bc8f36e8286d0254feb8083a6dd2a-
             vcpkg-${{ runner.os }}-
           # (no-op) single restore-keys list present above
