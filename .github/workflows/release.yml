@@ -44,8 +44,8 @@ jobs:
       VCPKG_FORCE_SYSTEM_BINARIES: '1'
     strategy:
       matrix:
-        language: [nl, nl_be]
-        licensing: [demo, full]
+        language: [nl]
+        licensing: [demo]
     steps:
       - uses: actions/checkout@v4
 
@@ -204,8 +204,8 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        language: [nl, nl_be]
-        licensing: [demo, full]
+        language: [nl]
+        licensing: [demo]
     steps:
       - uses: actions/checkout@v4
 
@@ -285,8 +285,8 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        language: [nl, nl_be]
-        licensing: [demo, full]
+        language: [nl]
+        licensing: [demo]
     steps:
       - uses: actions/checkout@v4
 
