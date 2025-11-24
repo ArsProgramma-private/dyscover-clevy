@@ -60,7 +60,10 @@ jobs:
                 "features": ["sound"]
               },
               "portaudio",
-              "gettext"
+              {
+                "name": "gettext",
+                "features": ["tools"]
+              }
             ]
           }
           '@
