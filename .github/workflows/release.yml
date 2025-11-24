@@ -113,6 +113,7 @@ jobs:
         shell: powershell
         run: |
           # Retry CMake configure up to 3 times to handle transient CDN errors
+          $ErrorActionPreference = "Stop"  # Make command failures throw exceptions
           $maxRetries = 3
           $retryCount = 0
           $success = $false
