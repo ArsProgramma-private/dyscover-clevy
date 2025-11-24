@@ -50,7 +50,7 @@ jobs:
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'  # 2023.12.12 LTS
+          vcpkgGitCommitId: 'c9140a3b500812ad3206317885860d9553b93f13'  # 2022.11.14 - Last known stable before MSYS2 pkgconf issues
 
       - name: Setup vcpkg binary caching
         shell: powershell

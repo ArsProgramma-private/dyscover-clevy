@@ -61,7 +61,7 @@ namespace {
             if (value < 0 || value > 65535) return false;
             
             AudioObjectPropertyAddress propertyAddress = {
-                kAudioHardwareServiceDeviceProperty_VirtualMasterVolume,
+                kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
                 kAudioDevicePropertyScopeOutput,
                 kAudioObjectPropertyElementMain
             };

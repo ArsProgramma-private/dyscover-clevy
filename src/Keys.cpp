@@ -152,12 +152,12 @@ static const std::vector<KeyTranslationEntry> g_dutchDefault = {
     { Key::Z, false, false, false, { { Key::Z, false, false, false } }, "z.wav" },
     { Key::Z, true, false, false, { { Key::Z, true, false, false } }, "z.wav" },
     { Key::X, false, true, false, { { Key::X, false, true, false } } },
-    { Key::V, false, true, false, { { Key::V, false, true, false } } },
-    { Key::Z, false, true, false, { { Key::Z, false, true, false } } },
-    { Key::A, false, true, false, { { Key::A, false, true, false } } },
-    { Key::F, false, true, false, { { Key::F, false, true, false } } },
-    { Key::Tab, false, false, true, { { Key::Tab, false, false, true } } },
-    { Key::F4, false, false, true, { { Key::F4, false, false, true } } },
+    { Key::V, false, true, false, { { Key::V, false, true, false } } , "", false, CapsLock::Ignore },
+    { Key::Z, false, true, false, { { Key::Z, false, true, false } } , "", false, CapsLock::Ignore },
+    { Key::A, false, true, false, { { Key::A, false, true, false } } , "", false, CapsLock::Ignore },
+    { Key::F, false, true, false, { { Key::F, false, true, false } } , "", false, CapsLock::Ignore },
+    { Key::Tab, false, false, true, { { Key::Tab, false, false, true } } , "", false, CapsLock::Ignore },
+    { Key::F4, false, false, true, { { Key::F4, false, false, true } } , "", false, CapsLock::Ignore },
 };
 
 static const std::vector<KeyTranslationEntry> g_dutchClassic = {
@@ -307,12 +307,12 @@ static const std::vector<KeyTranslationEntry> g_dutchClassic = {
     { Key::Z, false, false, false, { { Key::Z, false, false, false } }, "z.wav" },
     { Key::Z, true, false, false, { { Key::Z, true, false, false } }, "z.wav" },
     { Key::X, false, true, false, { { Key::X, false, true, false } } },
-    { Key::V, false, true, false, { { Key::V, false, true, false } } },
-    { Key::Z, false, true, false, { { Key::Z, false, true, false } } },
-    { Key::A, false, true, false, { { Key::A, false, true, false } } },
-    { Key::F, false, true, false, { { Key::F, false, true, false } } },
-    { Key::Tab, false, false, true, { { Key::Tab, false, false, true } } },
-    { Key::F4, false, false, true, { { Key::F4, false, false, true } } },
+    { Key::V, false, true, false, { { Key::V, false, true, false } } , "", false, CapsLock::Ignore },
+    { Key::Z, false, true, false, { { Key::Z, false, true, false } } , "", false, CapsLock::Ignore },
+    { Key::A, false, true, false, { { Key::A, false, true, false } } , "", false, CapsLock::Ignore },
+    { Key::F, false, true, false, { { Key::F, false, true, false } } , "", false, CapsLock::Ignore },
+    { Key::Tab, false, false, true, { { Key::Tab, false, false, true } } , "", false, CapsLock::Ignore },
+    { Key::F4, false, false, true, { { Key::F4, false, false, true } } , "", false, CapsLock::Ignore },
 };
 
 static const std::vector<KeyTranslationEntry> g_dutchKWeC = {
@@ -463,12 +463,12 @@ static const std::vector<KeyTranslationEntry> g_dutchKWeC = {
     { Key::Z, false, false, false, { { Key::Z, false, false, false } }, "z.wav" },
     { Key::Z, true, false, false, { { Key::Z, true, false, false } }, "z.wav" },
     { Key::X, false, true, false, { { Key::X, false, true, false } } },
-    { Key::V, false, true, false, { { Key::V, false, true, false } } },
-    { Key::Z, false, true, false, { { Key::Z, false, true, false } } },
-    { Key::A, false, true, false, { { Key::A, false, true, false } } },
-    { Key::F, false, true, false, { { Key::F, false, true, false } } },
-    { Key::Tab, false, false, true, { { Key::Tab, false, false, true } } },
-    { Key::F4, false, false, true, { { Key::F4, false, false, true } } },
+    { Key::V, false, true, false, { { Key::V, false, true, false } } , "", false, CapsLock::Ignore },
+    { Key::Z, false, true, false, { { Key::Z, false, true, false } } , "", false, CapsLock::Ignore },
+    { Key::A, false, true, false, { { Key::A, false, true, false } } , "", false, CapsLock::Ignore },
+    { Key::F, false, true, false, { { Key::F, false, true, false } } , "", false, CapsLock::Ignore },
+    { Key::Tab, false, false, true, { { Key::Tab, false, false, true } } , "", false, CapsLock::Ignore },
+    { Key::F4, false, false, true, { { Key::F4, false, false, true } } , "", false, CapsLock::Ignore },
 };
 #elif defined __LANGUAGE_NL_BE__
 static const std::vector<KeyTranslationEntry> g_flemishDefault = {
