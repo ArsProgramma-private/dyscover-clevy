@@ -2,15 +2,19 @@
 // DeviceDetectorWindows.cpp - Windows device detection using Config Manager API
 // Refactored from DeviceWindows.cpp to support platform abstraction layer
 
-#include "DeviceDetector.h"
-#include "../SupportedDevices.h"
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #include <cfgmgr32.h>
-#include <wx/log.h>
-#include <wx/frame.h>
 #include <atomic>
 #include <string>
 #include <algorithm>
+
+#include "DeviceDetector.h"
+#include "../SupportedDevices.h"
+#include <wx/log.h>
+#include <wx/frame.h>
 
 namespace {
     constexpr PlatformCapabilities HOTPLUG_EVENTS = 1 << 0;
