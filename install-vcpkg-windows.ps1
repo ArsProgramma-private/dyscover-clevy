@@ -30,7 +30,7 @@ try {
     
     # Install required packages
     Write-Host "Installing required packages..."
-    .\vcpkg install wxwidgets portaudio
+    .\vcpkg install wxwidgets portaudio gettext
     
     Write-Host "vcpkg installation complete!"
     Write-Host "vcpkg root: $VcpkgRoot"

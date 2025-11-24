@@ -67,6 +67,11 @@ jobs:
           }
           '@
           $manifest | Out-File -FilePath vcpkg.json -Encoding utf8
+      
+      - name: Set VCPKG_ROOT for gettext detection
+        shell: powershell
+        run: |
+          echo "VCPKG_ROOT=${{ github.workspace }}\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Pre-build vcpkg from source (avoid CDN issues)
         shell: powershell

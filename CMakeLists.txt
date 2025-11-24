@@ -347,15 +347,29 @@ else()
 endif()
 
 # Translations
-find_package(Gettext REQUIRED)
-set(PO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/res/lang/${LANGUAGE}.po)
-set(MO_FILE ${CMAKE_CURRENT_BINARY_DIR}/Dyscover.mo)
-add_custom_command(
-  MAIN_DEPENDENCY ${PO_FILE}
-  OUTPUT ${MO_FILE}
-  COMMAND ${GETTEXT_MSGFMT_EXECUTABLE} ${PO_FILE} -o"${MO_FILE}"
-)
-target_sources(Dyscover PRIVATE ${MO_FILE})
+# When using vcpkg, help CMake find gettext tools
+if(DEFINED ENV{VCPKG_ROOT})
+  list(APPEND CMAKE_PROGRAM_PATH "$ENV{VCPKG_ROOT}/installed/x64-windows/tools/gettext/bin")
+  list(APPEND CMAKE_PROGRAM_PATH "$ENV{VCPKG_ROOT}/installed/x64-windows/tools/gettext")
+endif()
+
+find_package(Gettext)
+if(Gettext_FOUND)
+  set(PO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/res/lang/${LANGUAGE}.po)
+  set(MO_FILE ${CMAKE_CURRENT_BINARY_DIR}/Dyscover.mo)
+  set(HAVE_TRANSLATION 1)
+  add_custom_command(
+    MAIN_DEPENDENCY ${PO_FILE}
+    OUTPUT ${MO_FILE}
+    COMMAND ${GETTEXT_MSGFMT_EXECUTABLE} ${PO_FILE} -o"${MO_FILE}"
+  )
+  target_sources(Dyscover PRIVATE ${MO_FILE})
+  message(STATUS "Translations enabled: ${GETTEXT_MSGFMT_EXECUTABLE}")
+else()
+  message(WARNING "Gettext not found. Building without translations.")
+  set(MO_FILE "")
+  set(HAVE_TRANSLATION 0)
+endif()
 
 # Licensing
 set(LICENSING "demo" CACHE STRING "Specifies which licensing of the app to use")
