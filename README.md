@@ -24,13 +24,15 @@ Install via package manager (Debian/Ubuntu example):
 sudo apt-get update
 sudo apt-get install -y \
     build-essential cmake pkg-config \
-    libwxgtk3.0-gtk3-dev \
+    libwxgtk3.2-dev \
     libudev-dev \
     libasound2-dev \
     libpulse-dev \
     portaudio19-dev \
     gettext
 ```
+
+**Note:** Older Ubuntu versions (< 22.04) may need `libwxgtk3.0-gtk3-dev` instead of `libwxgtk3.2-dev`.
 
 **Optional audio backends:**
 - `libpulse-dev` — PulseAudio support (recommended for modern Linux desktops)
