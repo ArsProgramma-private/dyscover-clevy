@@ -66,11 +66,22 @@ jobs:
           '@
           $manifest | Out-File -FilePath vcpkg.json -Encoding utf8
 
+      - name: Pre-build vcpkg from source (avoid CDN issues)
+        shell: powershell
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git vcpkg
+          cd vcpkg
+          git fetch --depth 1 origin 75cdbf55732bc8f36e8286d0254feb8083a6dd2a
+          git checkout 75cdbf55732bc8f36e8286d0254feb8083a6dd2a
+          # Build vcpkg from source instead of downloading prebuilt
+          .\bootstrap-vcpkg.bat -disableMetrics
+
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgGitCommitId: '75cdbf55732bc8f36e8286d0254feb8083a6dd2a'  # 2025.11.24
           vcpkgJsonGlob: 'vcpkg.json'
+          doNotUpdateVcpkg: true
 
       - name: Setup vcpkg binary caching
         shell: powershell
