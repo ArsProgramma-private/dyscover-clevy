@@ -7,7 +7,11 @@
 #if defined(__APPLE__)
 #  include <CoreServices/CoreServices.h>
 #  include <ApplicationServices/ApplicationServices.h>
-#  include <HIToolbox/Events.h>
+#  if __has_include(<HIToolbox/Events.h>)
+#    include <HIToolbox/Events.h>
+#  else
+#    include <HIToolbox/HIToolbox.h>
+#  endif
 #  include <HIToolbox/TextInputSources.h>
 #endif
 

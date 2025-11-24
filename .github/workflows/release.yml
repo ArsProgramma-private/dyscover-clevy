@@ -40,6 +40,8 @@ jobs:
     name: Windows Release Build
     needs: prepare-matrix
     runs-on: windows-2022
+    env:
+      VCPKG_FORCE_SYSTEM_BINARIES: '1'
     strategy:
       matrix:
         language: [nl, nl_be]
@@ -266,6 +268,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
+        env:
+          SYFT_VERSION: 1.9.0
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -282,7 +286,9 @@ jobs:
             jq
           
           # Install syft for SBOM
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          curl -sSfL "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz" -o syft.tar.gz
+          sudo tar -C /usr/local/bin -xzf syft.tar.gz syft
+          rm syft.tar.gz
 
       - name: Configure & Build
         run: |
