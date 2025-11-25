@@ -15,6 +15,9 @@ struct SupportedDevice {
 
 inline constexpr SupportedDevice SUPPORTED_DEVICES[] = {
     {"04B4", "0101", "Cypress Semiconductor Device"}
+#ifdef _DEBUG
+    , {"045E", "00DB", "Keyboard Device (DEBUG ONLY)"}
+#endif
     // Additional devices can be added here.
 };
 
