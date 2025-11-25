@@ -1,94 +1,310 @@
 #!/usr/bin/env pwsh
-<#!
+<#
 .SYNOPSIS
-  Build Dyscover (Clevy) on Windows with configurable options.
+  Build Dyscover (Clevy) on Windows with automatic dependency management.
 .DESCRIPTION
-  Wraps CMake generation + build + optional test + optional packaging.
-.PARAMETER Config [Debug|Release]
-.PARAMETER Arch   [x64]
-.PARAMETER Language (e.g. nl, en)
-.PARAMETER Licensing [demo|full]
-.PARAMETER Tests [On|Off]
-.PARAMETER Integration [On|Off]
-.PARAMETER Package [On|Off] produces a minimal deploy folder.
-.PARAMETER Generator [MSVC|MinGW|Ninja] choose build backend (no IDE required for MinGW/Ninja).
-.PARAMETER CopyDeps [On|Off] attempt to copy common runtime DLLs into dist folder.
+  Automatically installs CMake and vcpkg packages, then builds Dyscover with configurable options.
+  Uses vcpkg for dependency management (wxWidgets, PortAudio, gettext).
+.PARAMETER Config
+  Build configuration: Debug or Release (default: Release)
+.PARAMETER Arch
+  Target architecture: x64 (default: x64)
+.PARAMETER Language
+  UI language code (e.g., nl, nl_be, en) (default: nl)
+.PARAMETER Licensing
+  License mode: demo or full (default: demo)
+.PARAMETER Tests
+  Build and run tests: On or Off (default: Off)
+.PARAMETER Integration
+  Build integration tests: On or Off (default: Off)
+.PARAMETER Package
+  Create distribution package: On or Off (default: On)
+.PARAMETER Generator
+  CMake generator: MSVC, MinGW, or Ninja (default: MSVC)
+.PARAMETER VcpkgRoot
+  Path to vcpkg installation (default: C:\vcpkg)
 .EXAMPLE
-  ./build-windows.ps1 -Config Release -Language nl -Licensing demo -Tests On -Integration Off -Package On
+  .\build-windows.ps1
+  Build with defaults (Release, nl, demo, no tests)
+.EXAMPLE
+  .\build-windows.ps1 -Config Debug -Language nl_be -Licensing full -Tests On
+  Build debug version with Belgian Dutch UI, full licensing, and tests
+.EXAMPLE
+  .\build-windows.ps1 -Generator Ninja -Tests On
+  Build with Ninja generator and run tests
 .NOTES
-  Requires: VS 2022, CMake >=3.15, wxWidgets 3.2, optional PortAudio, librstts placed under lib/rstts/platforms/x86_64-pc-windows-msvc/.
+  Automatically installs CMake if not found and manages vcpkg dependencies.
+  Requires: Visual Studio 2022 (for MSVC generator) or appropriate compiler for MinGW/Ninja.
 #>
 param(
-  [ValidateSet('Debug','Release')] [string]$Config='Debug',
-  [ValidateSet('x64')] [string]$Arch='x64',
-  [string]$Language='nl',
-  [ValidateSet('demo','full')] [string]$Licensing='demo',
-  [ValidateSet('On','Off')] [string]$Tests='On',
-  [ValidateSet('On','Off')] [string]$Integration='Off',
-  [ValidateSet('On','Off')] [string]$Package='Off',
-  [ValidateSet('MSVC','MinGW','Ninja')] [string]$Generator='MSVC',
-  [ValidateSet('On','Off')] [string]$CopyDeps='Off'
+  [ValidateSet('Debug','Release')] 
+  [string]$Config = 'Release',
+  
+  [ValidateSet('x64')] 
+  [string]$Arch = 'x64',
+  
+  [string]$Language = 'nl',
+  
+  [ValidateSet('demo','full')] 
+  [string]$Licensing = 'demo',
+  
+  [ValidateSet('On','Off')] 
+  [string]$Tests = 'Off',
+  
+  [ValidateSet('On','Off')] 
+  [string]$Integration = 'Off',
+  
+  [ValidateSet('On','Off')] 
+  [string]$Package = 'On',
+  
+  [ValidateSet('MSVC','MinGW','Ninja')] 
+  [string]$Generator = 'MSVC',
+  
+  [string]$VcpkgRoot = 'C:\vcpkg'
 )
 
-$ErrorActionPreference='Stop'
-$buildDir="build-windows-$Config"; if(!(Test-Path $buildDir)){ New-Item -ItemType Directory -Path $buildDir | Out-Null }
+# Set error handling
+$ErrorActionPreference = "Stop"
 
-Write-Host "[Build] Generating CMake project ($Config, $Arch)" -ForegroundColor Cyan
-# Select CMake generator logic
-switch ($Generator) {
-  'MSVC'  { $cmakeArgs=@('-S','.', '-B', $buildDir, '-G','Visual Studio 17 2022', '-A', $Arch) }
-  'MinGW' { $cmakeArgs=@('-S','.', '-B', $buildDir, '-G','MinGW Makefiles') }
-  'Ninja' { $cmakeArgs=@('-S','.', '-B', $buildDir, '-G','Ninja') }
-}
+# Define variables
+$ProjectRoot = $PSScriptRoot
+$BuildDir = Join-Path $ProjectRoot "build-windows-$Config"
 
-$cmakeArgs += @(
-  "-DLANGUAGE=$Language",
-  "-DLICENSING=$Licensing",
-  "-DBUILD_TESTS=$Tests",
-  "-DBUILD_INTEGRATION_TESTS=$Integration"
-)
-& cmake @cmakeArgs
-
-Write-Host "[Build] Building target Dyscover" -ForegroundColor Cyan
-& cmake --build $buildDir --config $Config --target Dyscover
-
-if($Tests -eq 'On'){
-  Write-Host "[Test] Running unit tests" -ForegroundColor Yellow
-  if ($Generator -eq 'MSVC') {
-    & ctest --test-dir $buildDir -C $Config --output-on-failure
-  } else {
-    & ctest --test-dir $buildDir --output-on-failure
-  }
-}
-
-if($Package -eq 'On'){
-  $outDir="dist-windows-$Config"; if(Test-Path $outDir){ Remove-Item -Recurse -Force $outDir }
-  New-Item -ItemType Directory -Path $outDir | Out-Null
-  Copy-Item "$buildDir/$Config/Dyscover.exe" $outDir
-  Write-Host "[Package] Created $outDir" -ForegroundColor Green
-  if($CopyDeps -eq 'On') {
-    Write-Host "[Deps] Attempting DLL copy (wx*, librstts*, libintl*, libiconv*, portaudio*)" -ForegroundColor Yellow
-    $dllPatterns = @('wx*.dll','librstts*.dll','libintl*.dll','libiconv*.dll','portaudio*.dll')
-    $searchRoots = @(
-      (Join-Path $PWD 'lib/rstts/platforms/x86_64-pc-windows-msvc'),
-      (Join-Path $Env:WXWIN 'lib'),
-      (Join-Path $Env:WXWIN 'lib\vc_x64_dll'),
-      (Join-Path $Env:ProgramFiles 'gettext/bin'),
-      (Join-Path $Env:ProgramFiles 'PortAudio'),
-      (Join-Path $Env:ProgramFiles 'portaudio'),
-      (Join-Path $Env:ProgramFiles 'portaudio\bin')
-    ) | Where-Object { $_ -and (Test-Path $_) }
-    foreach($root in $searchRoots) {
-      foreach($pat in $dllPatterns) {
-        Get-ChildItem -Path $root -Filter $pat -File -ErrorAction SilentlyContinue | ForEach-Object {
-          Copy-Item $_.FullName $outDir -Force
+# Functions
+function Test-CMake {
+    try {
+        $cmakeVersion = & cmake --version 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "[Info] CMake found: $($cmakeVersion -split "`n" | Select-Object -First 1)" -ForegroundColor Green
+            return $true
         }
-      }
+    } catch {
+        # CMake not found
     }
-    Write-Host "[Deps] DLL copy pass complete (verify contents)." -ForegroundColor Green
-  } else {
-    Write-Host "[Deps] Skipped DLL copy (use -CopyDeps On to enable)." -ForegroundColor DarkGray
-  }
+    return $false
 }
 
-Write-Host "[Done] Build finished." -ForegroundColor Green
+# Check and install CMake if needed
+Write-Host "[Setup] Checking for CMake..." -ForegroundColor Cyan
+if (-not (Test-CMake)) {
+    Write-Host "[Setup] CMake not found. Installing CMake..." -ForegroundColor Yellow
+    
+    $cmakePath = "C:\Program Files\CMake\bin\cmake.exe"
+    $installerPath = Join-Path $env:TEMP "cmake-installer.msi"
+    
+    if (Test-Path $cmakePath) {
+        Write-Host "[Setup] CMake is already installed at $cmakePath" -ForegroundColor Green
+        $env:PATH = "C:\Program Files\CMake\bin;$env:PATH"
+    } else {
+        if (-not (Test-Path $installerPath)) {
+            $cmakeUrl = "https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-windows-x86_64.msi"
+            Write-Host "[Setup] Downloading CMake from $cmakeUrl..." -ForegroundColor Yellow
+            try {
+                Invoke-WebRequest -Uri $cmakeUrl -OutFile $installerPath
+                Write-Host "[Setup] Downloaded CMake installer" -ForegroundColor Green
+            } catch {
+                Write-Error "Failed to download CMake installer: $_"
+                exit 1
+            }
+        }
+        
+        Write-Host "[Setup] Installing CMake silently..." -ForegroundColor Yellow
+        $installArgs = "/i `"$installerPath`" /quiet /norestart"
+        Start-Process -FilePath "msiexec.exe" -ArgumentList $installArgs -Wait
+        Write-Host "[Setup] CMake installed successfully" -ForegroundColor Green
+        
+        $env:PATH = "C:\Program Files\CMake\bin;$env:PATH"
+        Remove-Item $installerPath -Force
+    }
+}
+
+# Install vcpkg packages
+Write-Host "[Setup] Ensuring vcpkg packages are installed..." -ForegroundColor Cyan
+$vcpkgExe = Join-Path $VcpkgRoot "vcpkg.exe"
+if (-not (Test-Path $vcpkgExe)) {
+    Write-Error "vcpkg not found at $vcpkgExe. Please install vcpkg first or specify correct path with -VcpkgRoot"
+    exit 1
+}
+
+$installArgs = @("wxwidgets", "portaudio", "gettext[tools]", "--recurse")
+& $vcpkgExe install @installArgs
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to install vcpkg packages"
+    exit $LASTEXITCODE
+}
+Write-Host "[Setup] vcpkg packages ready" -ForegroundColor Green
+
+# Set VCPKG_ROOT environment variable
+$env:VCPKG_ROOT = $VcpkgRoot
+Write-Host "[Setup] Set VCPKG_ROOT=$VcpkgRoot" -ForegroundColor Green
+
+# Create build directory
+if (Test-Path $BuildDir) {
+    Write-Host "[Build] Cleaning existing build directory..." -ForegroundColor Yellow
+    Remove-Item -Recurse -Force $BuildDir
+}
+New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
+
+# Setup vcpkg binary caching
+New-Item -ItemType Directory -Force -Path "$env:LOCALAPPDATA\vcpkg\archives" | Out-Null
+& $vcpkgExe integrate install | Out-Null
+
+# Configure CMake
+Write-Host "[Build] Configuring CMake project ($Config, $Arch, Language=$Language, Licensing=$Licensing)..." -ForegroundColor Cyan
+
+# Select generator
+switch ($Generator) {
+    'MSVC'  { $generatorArgs = @('-G', 'Visual Studio 17 2022', '-A', $Arch) }
+    'MinGW' { $generatorArgs = @('-G', 'MinGW Makefiles') }
+    'Ninja' { $generatorArgs = @('-G', 'Ninja') }
+}
+
+$cmakeArgs = @(
+    '-S', $ProjectRoot,
+    '-B', $BuildDir
+) + $generatorArgs + @(
+    "-DCMAKE_TOOLCHAIN_FILE=$VcpkgRoot\scripts\buildsystems\vcpkg.cmake",
+    "-DCMAKE_BUILD_TYPE=$Config",
+    "-DLANGUAGE=$Language",
+    "-DLICENSING=$Licensing",
+    "-DBUILD_TESTS=$Tests",
+    "-DBUILD_INTEGRATION_TESTS=$Integration"
+)
+
+if ($Package -eq 'On') {
+    $cmakeArgs += @(
+        "-DPACKAGING_ENABLE=ON",
+        "-DPACKAGING_DEBUG_SYMBOLS=ON"
+    )
+}
+
+& cmake @cmakeArgs
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "CMake configuration failed"
+    exit $LASTEXITCODE
+}
+
+# Build
+Write-Host "[Build] Building target Dyscover..." -ForegroundColor Cyan
+$buildArgs = @('--build', $BuildDir, '--target', 'Dyscover')
+if ($Generator -eq 'MSVC') {
+    $buildArgs += @('--config', $Config)
+}
+if ($env:NUMBER_OF_PROCESSORS) {
+    $buildArgs += @('-j', $env:NUMBER_OF_PROCESSORS)
+}
+
+& cmake @buildArgs
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Build failed"
+    exit $LASTEXITCODE
+}
+Write-Host "[Build] Build completed successfully" -ForegroundColor Green
+
+# Run tests if enabled
+if ($Tests -eq 'On') {
+    Write-Host "[Test] Running unit tests..." -ForegroundColor Cyan
+    $testArgs = @('--test-dir', $BuildDir, '--output-on-failure')
+    if ($Generator -eq 'MSVC') {
+        $testArgs += @('-C', $Config)
+    }
+    & ctest @testArgs
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Some tests failed"
+    } else {
+        Write-Host "[Test] All tests passed" -ForegroundColor Green
+    }
+}
+
+# Package if enabled
+if ($Package -eq 'On') {
+    Write-Host "[Package] Creating distribution package..." -ForegroundColor Cyan
+    
+    $DistDir = Join-Path $BuildDir "dist-windows-$Config"
+    if (Test-Path $DistDir) {
+        Remove-Item -Recurse -Force $DistDir
+    }
+    New-Item -ItemType Directory -Force -Path $DistDir | Out-Null
+    
+    # Determine exe location based on generator
+    if ($Generator -eq 'MSVC') {
+        $exePath = Join-Path $BuildDir "$Config\Dyscover.exe"
+        $buildOutputDir = Join-Path $BuildDir $Config
+    } else {
+        $exePath = Join-Path $BuildDir "Dyscover.exe"
+        $buildOutputDir = $BuildDir
+    }
+    
+    if (-not (Test-Path $exePath)) {
+        Write-Error "Built executable not found at $exePath"
+        exit 1
+    }
+    
+    Copy-Item $exePath $DistDir
+    Write-Host "[Package] Copied Dyscover.exe" -ForegroundColor Green
+    
+    # Copy ALL DLLs from vcpkg (wxWidgets has many transitive dependencies)
+    Write-Host "[Package] Copying vcpkg DLLs..." -ForegroundColor Cyan
+    $VcpkgBinDir = Join-Path $VcpkgRoot "installed\x64-windows\bin"
+    $VcpkgToolsBinDir = Join-Path $VcpkgRoot "installed\x64-windows\tools\*\bin"
+    
+    $copiedDLLs = 0
+    if (Test-Path $VcpkgBinDir) {
+        Get-ChildItem -Path $VcpkgBinDir -Filter "*.dll" -ErrorAction SilentlyContinue | ForEach-Object {
+            try {
+                Copy-Item $_.FullName $DistDir -ErrorAction SilentlyContinue
+                $copiedDLLs++
+            } catch {
+                # Silently skip files that can't be copied
+            }
+        }
+    }
+    
+    # Also check tools subdirectories
+    Get-ChildItem -Path $VcpkgToolsBinDir -Filter "*.dll" -ErrorAction SilentlyContinue | ForEach-Object {
+        try {
+            Copy-Item $_.FullName $DistDir -ErrorAction SilentlyContinue
+            $copiedDLLs++
+        } catch {
+            # Silently skip
+        }
+    }
+    
+    if ($copiedDLLs -gt 0) {
+        Write-Host "[Package] Copied $copiedDLLs DLLs from vcpkg" -ForegroundColor Green
+    } else {
+        Write-Warning "No DLLs found in vcpkg directories"
+    }
+    
+    # Copy librstts (correct path for Windows)
+    $LibRsttsDll = Join-Path $ProjectRoot "lib\rstts\platforms\x86_64-pc-win64\librstts-2.dll"
+    if (Test-Path $LibRsttsDll) {
+        Copy-Item $LibRsttsDll $DistDir
+        Write-Host "[Package] Copied librstts-2.dll" -ForegroundColor Green
+    } else {
+        Write-Warning "librstts-2.dll not found at $LibRsttsDll"
+    }
+    
+    # Copy audio and TTS data directories
+    $AudioDir = Join-Path $buildOutputDir "audio"
+    if (Test-Path $AudioDir) { 
+        Copy-Item -Recurse $AudioDir $DistDir
+        Write-Host "[Package] Copied audio directory" -ForegroundColor Green
+    }
+    
+    $TtsDir = Join-Path $buildOutputDir "tts"
+    if (Test-Path $TtsDir) { 
+        Copy-Item -Recurse $TtsDir $DistDir
+        Write-Host "[Package] Copied TTS directory" -ForegroundColor Green
+    }
+    
+    Write-Host "[Done] Package created at: $DistDir" -ForegroundColor Green
+    Write-Host "[Done] Executable: $DistDir\Dyscover.exe" -ForegroundColor Green
+} else {
+    Write-Host "[Done] Build complete (packaging skipped)" -ForegroundColor Green
+    if ($Generator -eq 'MSVC') {
+        Write-Host "[Done] Executable: $BuildDir\$Config\Dyscover.exe" -ForegroundColor Green
+    } else {
+        Write-Host "[Done] Executable: $BuildDir\Dyscover.exe" -ForegroundColor Green
+    }
+}
