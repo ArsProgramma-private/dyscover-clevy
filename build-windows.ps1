@@ -129,8 +129,8 @@ Copy-Item (Join-Path $BuildDir "Release\Dyscover.exe") $DistDir
 Write-Host "Copying all DLLs from vcpkg..."
 $VcpkgBinDir = "$VcpkgRoot\installed\x64-windows\bin"
 $VcpkgToolsBinDir = "$VcpkgRoot\installed\x64-windows\tools\*\bin"
-
-$allDLLs = @()
+    
+$allDLLs = @()  
 if (Test-Path $VcpkgBinDir) {
     $allDLLs += @(Get-ChildItem -Path $VcpkgBinDir -Filter "*.dll" -ErrorAction SilentlyContinue)
 }
