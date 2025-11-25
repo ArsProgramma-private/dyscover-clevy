@@ -179,7 +179,7 @@ bool Core::OnKeyEvent(Key key, KeyEventType eventType, bool capsLock, bool shift
     {
         if (m_pConfig->GetLetters())
         {
-            m_pSoundPlayer->StopPlaying();
+            // PlaySoundFile now handles crossfading automatically
             m_pSoundPlayer->PlaySoundFile(translation.sound);
         }
     }
