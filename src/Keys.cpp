@@ -48,6 +48,10 @@ static KeyTranslation FindTranslation(const std::vector<KeyTranslationEntry>& en
 // Main translation function - uses layout registry
 KeyTranslation TranslateKey(Key key, bool caps, bool shift, bool ctrl, bool alt, Layout layout)
 {
+    // layout parameter is unused - we use LayoutRegistry::GetActiveLayout() instead
+    // Kept for API compatibility with existing callers
+    (void)layout;
+    
     // Use LayoutRegistry to get the active layout
     const Dyscover::ILayoutProvider* activeLayout = Dyscover::LayoutRegistry::Instance().GetActiveLayout();
     if (activeLayout) {
