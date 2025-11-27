@@ -1,0 +1,12 @@
+{
+    "layout_type": "classic",
+    "language": "nl_be",
+    "language_name": "Dutch (Belgium) / Flemish",
+    "layout_name": "Classic Flemish Keyboard",
+    "maintainer": "Dyscover Team",
+    "last_updated": "2025-11-27",
+    "audio_count": 41,
+    "shared_audio_count": 0,
+    "tts_voice": "Veerle",
+    "notes": "Traditional classic layout for Flemish (Belgian Dutch)"
+}

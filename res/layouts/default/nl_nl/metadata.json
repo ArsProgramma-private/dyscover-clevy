@@ -1,0 +1,12 @@
+{
+    "layout_type": "default",
+    "language": "nl_nl",
+    "language_name": "Dutch (Netherlands)",
+    "layout_name": "Default Dutch Keyboard",
+    "maintainer": "Dyscover Team",
+    "last_updated": "2025-11-27",
+    "audio_count": 41,
+    "shared_audio_count": 0,
+    "tts_voice": "Ilse",
+    "notes": "Standard default layout for Dutch (Netherlands)"
+}

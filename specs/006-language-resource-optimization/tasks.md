@@ -213,10 +213,10 @@ Constitution Alignment:
 
 **Purpose**: Improvements now that base restructuring is complete
 
-- [ ] T083 [P] Add metadata.json support to each layout directory per data-model.md
-- [ ] T084 [P] Create layout validation tool: scripts/validate-all-layouts.sh
-- [ ] T085 [P] Performance optimization: Cache layout discovery results during CMake config
-- [ ] T086 [P] Developer tooling: Add layout creation script scripts/create-new-layout.sh
+- [X] T083 [P] Add metadata.json support to each layout directory per data-model.md (Completed 2025-11-27)
+- [X] T084 [P] Create layout validation tool: scripts/validate-all-layouts.sh (Completed 2025-11-27)
+- [X] T085 [P] Performance optimization: Cache layout discovery results during CMake config (Completed 2025-11-27)
+- [X] T086 [P] Developer tooling: Add layout creation script scripts/create-new-layout.sh (Completed 2025-11-27)
 - [ ] T087 [P] Documentation: Create video walkthrough of adding a new language
 - [ ] T088 Code cleanup: Review and refactor LayoutRegistry for complexity <10
 - [ ] T089 Code cleanup: Review migration artifacts, ensure all temporary code removed
