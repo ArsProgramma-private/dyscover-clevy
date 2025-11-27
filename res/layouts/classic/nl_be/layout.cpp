@@ -1,0 +1,224 @@
+// Auto-generated layout module
+// Feature: 006-language-resource-optimization (Phase 2)
+// Migrated from src/Keys.cpp
+
+#include "Keys.h"
+#include "layouts/LayoutLoader.h"
+#include "layouts/LayoutRegistry.h"
+
+// Type definitions (copied from Keys.cpp)
+enum class CapsLock {
+    Ignore,
+    Active,
+    Inactive,
+};
+
+struct KeyTranslationEntry {
+    Key input;
+    bool shift;
+    bool ctrl;
+    bool alt;
+    std::vector<KeyStroke> output;
+    std::string sound;
+    bool speak_sentence = false;
+    CapsLock capsLock = CapsLock::Ignore;
+};
+
+namespace {
+
+static const std::vector<KeyTranslationEntry> g_flemishClassic = {
+    { Key::Esc, false, false, false, { { Key::Esc, false, false, false } } },
+    { Key::CapsLock, false, false, false, { { Key::CapsLock, false, false, false } } },
+    { Key::Up, false, false, false, { { Key::Up, false, false, false } } },
+    { Key::Down, false, false, false, { { Key::Down, false, false, false } } },
+    { Key::Left, false, false, false, { { Key::Left, false, false, false } } },
+    { Key::Right, false, false, false, { { Key::Right, false, false, false } } },
+    { Key::Backspace, false, false, false, { { Key::Backspace, false, false, false } } },
+    { Key::Space, false, false, false, { { Key::Space, false, false, false } } },
+    { Key::Enter, false, false, false, { { Key::Enter, false, false, false } } },
+    { Key::Tab, false, false, false, { { Key::Tab, false, false, false } } },
+    { Key::One, false, false, false, { { Key::A }, { Key::A } }, "aa.wav", false, CapsLock::Inactive },
+    { Key::Two, false, false, false, { { Key::U }, { Key::U } }, "uu.wav", false, CapsLock::Inactive },
+    { Key::Three, false, false, false, { { Key::O }, { Key::O } }, "oo.wav", false, CapsLock::Inactive },
+    { Key::Four, false, false, false, { { Key::E }, { Key::E } }, "ee.wav", false, CapsLock::Inactive },
+    { Key::Five, false, false, false, { { Key::E }, { Key::U } }, "eu.wav", false, CapsLock::Inactive },
+    { Key::Six, false, false, false, { { Key::A }, { Key::U } }, "au.wav", false, CapsLock::Inactive },
+    { Key::Seven, false, false, false, { { Key::U }, { Key::I } }, "ui.wav", false, CapsLock::Inactive },
+    { Key::Eight, false, false, false, { { Key::I }, { Key::E } }, "ie.wav", false, CapsLock::Inactive },
+    { Key::Nine, false, false, false, { { Key::O }, { Key::E } }, "oe.wav", false, CapsLock::Inactive },
+    { Key::Zero, false, false, false, { { Key::E }, { Key::I } }, "ij.wav", false, CapsLock::Inactive },
+    { Key::One, true, false, false, { { Key::One, true, false, false } }, "1.wav", false, CapsLock::Inactive },
+    { Key::Two, true, false, false, { { Key::Two, true, false, false } }, "2.wav", false, CapsLock::Inactive },
+    { Key::Three, true, false, false, { { Key::Three, true, false, false } }, "3.wav", false, CapsLock::Inactive },
+    { Key::Four, true, false, false, { { Key::Four, true, false, false } }, "4.wav", false, CapsLock::Inactive },
+    { Key::Five, true, false, false, { { Key::Five, true, false, false } }, "5.wav", false, CapsLock::Inactive },
+    { Key::Six, true, false, false, { { Key::Six, true, false, false } }, "6.wav", false, CapsLock::Inactive },
+    { Key::Seven, true, false, false, { { Key::Seven, true, false, false } }, "7.wav", false, CapsLock::Inactive },
+    { Key::Eight, true, false, false, { { Key::Eight, true, false, false } }, "8.wav", false, CapsLock::Inactive },
+    { Key::Nine, true, false, false, { { Key::Nine, true, false, false } }, "9.wav", false, CapsLock::Inactive },
+    { Key::Zero, true, false, false, { { Key::Zero, true, false, false } }, "0.wav", false, CapsLock::Inactive },
+    { Key::One, false, true, false, { { Key::One, false, false, false } }, std::string(), false, CapsLock::Inactive },
+    { Key::Two, false, true, false, { { Key::Two, false, false, false } }, std::string(), false, CapsLock::Inactive },
+    { Key::Three, false, true, false, { { Key::Three, false, false, false } }, std::string(), false, CapsLock::Inactive },
+    { Key::Four, false, true, false, { { Key::Four, false, false, false } }, std::string(), false, CapsLock::Inactive },
+    { Key::Five, false, true, false, { { Key::Five, false, false, false } }, std::string(), false, CapsLock::Inactive },
+    { Key::Six, false, true, false, { { Key::Six, false, false, false } }, std::string(), false, CapsLock::Inactive },
+    { Key::Seven, false, true, false, { { Key::Seven, false, false, false } }, std::string(), false, CapsLock::Inactive },
+    { Key::Eight, false, true, false, { { Key::Eight, false, false, false } }, std::string(), true, CapsLock::Inactive },
+    { Key::Nine, false, true, false, { { Key::Nine, false, false, false } }, std::string(), false, CapsLock::Inactive },
+    { Key::Zero, false, true, false, { { Key::Zero, false, false, false } }, std::string(), false, CapsLock::Inactive },
+    { Key::One, false, false, false, { { Key::A }, { Key::A } }, "aa.wav", false, CapsLock::Active },
+    { Key::Two, false, false, false, { { Key::U }, { Key::U } }, "uu.wav", false, CapsLock::Active },
+    { Key::Three, false, false, false, { { Key::O }, { Key::O } }, "oo.wav", false, CapsLock::Active },
+    { Key::Four, false, false, false, { { Key::E }, { Key::E } }, "ee.wav", false, CapsLock::Active },
+    { Key::Five, false, false, false, { { Key::E }, { Key::U } }, "eu.wav", false, CapsLock::Active },
+    { Key::Six, false, false, false, { { Key::A }, { Key::U } }, "au.wav", false, CapsLock::Active },
+    { Key::Seven, false, false, false, { { Key::U }, { Key::I } }, "ui.wav", false, CapsLock::Active },
+    { Key::Eight, false, false, false, { { Key::I }, { Key::E } }, "ie.wav", false, CapsLock::Active },
+    { Key::Nine, false, false, false, { { Key::O }, { Key::E } }, "oe.wav", false, CapsLock::Active },
+    { Key::Zero, false, false, false, { { Key::E }, { Key::I } }, "ij.wav", false, CapsLock::Active },
+    { Key::One, true, false, false, { { Key::One, true, false, false } }, std::string(), false, CapsLock::Active },
+    { Key::Two, true, false, false, { { Key::Two, true, false, false } }, std::string(), false, CapsLock::Active },
+    { Key::Three, true, false, false, { { Key::Three, true, false, false } }, std::string(), false, CapsLock::Active },
+    { Key::Four, true, false, false, { { Key::Four, true, false, false } }, std::string(), false, CapsLock::Active },
+    { Key::Five, true, false, false, { { Key::Five, true, false, false } }, std::string(), false, CapsLock::Active },
+    { Key::Six, true, false, false, { { Key::Six, true, false, false } }, std::string(), false, CapsLock::Active },
+    { Key::Seven, true, false, false, { { Key::Seven, true, false, false } }, std::string(), false, CapsLock::Active },
+    { Key::Eight, true, false, false, { { Key::Eight, true, false, false } }, std::string(), true, CapsLock::Active },
+    { Key::Nine, true, false, false, { { Key::Nine, true, false, false } }, std::string(), false, CapsLock::Active },
+    { Key::Zero, true, false, false, { { Key::Zero, true, false, false } }, std::string(), false, CapsLock::Active },
+    { Key::Semicolon, false, false, false, { { Key::I }, { Key::J } }, "ij.wav" },
+    { Key::CloseBracket, false, false, false, { { Key::O }, { Key::U } }, "ou.wav" },
+    { Key::Semicolon, true, false, false, { { Key::Semicolon, true, false, false } } },
+    { Key::CloseBracket, true, false, false, { { Key::CloseBracket, true, false, false } } },
+    { Key::Semicolon, false, true, false, { { Key::I }, { Key::J } }, "u.wav" },
+    { Key::CloseBracket, false, true, false, { { Key::CloseBracket, false, false, false } } },
+    { Key::Comma, false, false, false, { { Key::Comma, false, false, false } }, std::string(), false, CapsLock::Inactive },
+    { Key::Comma, true, false, false, { { Key::Comma, true, false, false } }, std::string(), true, CapsLock::Inactive },
+    { Key::Comma, false, false, false, { { Key::Comma, false, false, false } }, std::string(), true, CapsLock::Active },
+    { Key::Comma, true, false, false, { { Key::Comma, true, false, false } }, std::string(), false, CapsLock::Active },
+    { Key::Dot, false, false, false, { { Key::Dot, false, false, false } }, std::string(), false, CapsLock::Inactive },
+    { Key::Dot, true, false, false, { { Key::Dot, true, false, false } }, std::string(), true, CapsLock::Inactive },
+    { Key::Dot, false, false, false, { { Key::Dot, false, false, false } }, std::string(), true, CapsLock::Active },
+    { Key::Dot, true, false, false, { { Key::Dot, true, false, false } }, std::string(), false, CapsLock::Active },
+    { Key::Slash, false, false, false, { { Key::N }, { Key::G } }, "ng.wav" },
+    { Key::Slash, true, false, false, { { Key::Slash, true, false, false } } },
+    { Key::Slash, false, true, false, { { Key::Slash, false, false, false } } },
+    { Key::Backtick, false, false, false, { { Key::N }, { Key::K } }, "nk.wav" },
+    { Key::Backtick, true, false, false, { { Key::Backtick, true, false, false } } },
+    { Key::Backtick, false, true, false, { { Key::Backtick, false, false, false } } },
+    { Key::Backslash, false, false, false, { { Key::C }, { Key::H } }, "ch.wav" },
+    { Key::Backslash, true, false, false, { { Key::Backslash, true, false, false } } },
+    { Key::Backslash, false, true, false, { { Key::C }, { Key::H } }, "sj.wav" },
+    { Key::AltGr, false, false, false, { { Key::E }, { Key::E }, { Key::R } }, "eer.wav" },
+    { Key::AltGr, false, true, false, { { Key::E }, { Key::E }, { Key::R } }, "eer.wav" },  // In non-US keyboard layouts, Windows translates AltGr to LeftCtrl+AltGr
+    { Key::Equal, false, false, false, { { Key::O }, { Key::O }, { Key::R } }, "oor.wav" },
+    { Key::Equal, true, false, false, { { Key::Equal, true, false, false } } },
+    { Key::Equal, false, true, false, { { Key::Equal, false, false, false } } },
+    { Key::OpenBracket, false, false, false, { { Key::E }, { Key::U }, { Key::R } }, "eur.wav" },
+    { Key::OpenBracket, true, false, false, { { Key::OpenBracket, true, false, false } } },
+    { Key::OpenBracket, false, true, false, { { Key::OpenBracket, false, false, false } } },
+    { Key::Minus, false, false, false, { { Key::S }, { Key::C }, { Key::H } }, "sch.wav" },
+    { Key::Minus, true, false, false, { { Key::Minus, true, false, false } } },
+    { Key::Minus, false, true, false, { { Key::Minus, false, false, false } } },
+    { Key::Ins, false, false, false, { { Key::A }, { Key::A }, { Key::I } }, "aai.wav" },
+    { Key::Ins, true, false, false, { { Key::Ins, true, false, false } } },
+    { Key::Ins, false, true, false, { { Key::Ins, false, false, false } } },
+    { Key::Home, false, false, false, { { Key::O }, { Key::O }, { Key::I } }, "ooi.wav" },
+    { Key::Home, true, false, false, { { Key::Home, true, false, false } } },
+    { Key::Home, false, true, false, { { Key::Home, false, false, false } } },
+    { Key::PageUp, false, false, false, { { Key::O }, { Key::E }, { Key::I } }, "oei.wav" },
+    { Key::PageUp, true, false, false, { { Key::PageUp, true, false, false } } },
+    { Key::PageUp, false, true, false, { { Key::PageUp, false, false, false } } },
+    { Key::Del, false, false, false, { { Key::E }, { Key::E }, { Key::U }, { Key::W } }, "eeuw.wav" },
+    { Key::Del, true, false, false, { { Key::Del, true, false, false } } },
+    { Key::Del, false, true, false, { { Key::Del, false, false, false } } },
+    { Key::End, false, false, false, { { Key::I }, { Key::E }, { Key::U }, { Key::W } }, "ieuw.wav" },
+    { Key::End, true, false, false, { { Key::End, true, false, false } } },
+    { Key::End, false, true, false, { { Key::End, false, false, false } } },
+    { Key::PageDown, false, false, false, { { Key::U }, { Key::W } }, "uw.wav" },
+    { Key::PageDown, true, false, false, { { Key::PageDown, true, false, false } } },
+    { Key::PageDown, false, true, false, { { Key::PageDown, false, false, false } } },
+    { Key::A, false, false, false, { { Key::A, false, false, false } }, "a.wav" },
+    { Key::A, true, false, false, { { Key::A, true, false, false } }, "a.wav" },
+    { Key::A, false, false, true, { { Key::A, false, false, false } }, "aa.wav" },
+    { Key::B, false, false, false, { { Key::B, false, false, false } }, "b.wav" },
+    { Key::B, true, false, false, { { Key::B, true, false, false } }, "b.wav" },
+    { Key::C, false, false, false, { { Key::C, false, false, false } }, "c.wav" },
+    { Key::C, true, false, false, { { Key::C, true, false, false } }, "c.wav" },
+    { Key::C, false, true, false, { { Key::C } }, "k.wav" },  // Not a mistake: Ctrl+C should give 'c' with sound 'k'
+    { Key::D, false, false, false, { { Key::D, false, false, false } }, "d.wav" },
+    { Key::D, true, false, false, { { Key::D, true, false, false } }, "d.wav" },
+    { Key::D, false, true, false, { { Key::D } }, "t.wav" },  // Not a mistake: Ctrl+D should give 'd' with sound 't'
+    { Key::E, false, false, false, { { Key::E, false, false, false } }, "e.wav" },
+    { Key::E, true, false, false, { { Key::E, true, false, false } }, "e.wav" },
+    { Key::E, false, false, true, { { Key::E, false, false, false } }, "ee.wav" },
+    { Key::E, false, true, false, { { Key::E } }, "u.wav" },  // Not a mistake: Ctrl+E should give 'e' with sound 'u'
+    { Key::F, false, false, false, { { Key::F, false, false, false } }, "f.wav" },
+    { Key::F, true, false, false, { { Key::F, true, false, false } }, "f.wav" },
+    { Key::G, false, false, false, { { Key::G, false, false, false } }, "g.wav" },
+    { Key::G, true, false, false, { { Key::G, true, false, false } }, "g.wav" },
+    { Key::H, false, false, false, { { Key::H, false, false, false } }, "h.wav" },
+    { Key::H, true, false, false, { { Key::H, true, false, false } }, "h.wav" },
+    { Key::I, false, false, false, { { Key::I, false, false, false } }, "i.wav" },
+    { Key::I, true, false, false, { { Key::I, true, false, false } }, "i.wav" },
+    { Key::I, false, false, true, { { Key::I, false, false, false } }, "ie.wav" },
+    { Key::I, false, true, false, { { Key::I } }, "u.wav" },  // Not a mistake: Ctrl+I should give 'i' with sound 'u'
+    { Key::J, false, false, false, { { Key::J, false, false, false } }, "j.wav" },
+    { Key::J, true, false, false, { { Key::J, true, false, false } }, "j.wav" },
+    { Key::K, false, false, false, { { Key::K, false, false, false } }, "k.wav" },
+    { Key::K, true, false, false, { { Key::K, true, false, false } }, "k.wav" },
+    { Key::L, false, false, false, { { Key::L, false, false, false } }, "l.wav" },
+    { Key::L, true, false, false, { { Key::L, true, false, false } }, "l.wav" },
+    { Key::M, false, false, false, { { Key::M, false, false, false } }, "m.wav" },
+    { Key::M, true, false, false, { { Key::M, true, false, false } }, "m.wav" },
+    { Key::N, false, false, false, { { Key::N, false, false, false } }, "n.wav" },
+    { Key::N, true, false, false, { { Key::N, true, false, false } }, "n.wav" },
+    { Key::O, false, false, false, { { Key::O, false, false, false } }, "o.wav" },
+    { Key::O, true, false, false, { { Key::O, true, false, false } }, "o.wav" },
+    { Key::O, false, false, true, { { Key::O, false, false, false } }, "oo.wav" },
+    { Key::P, false, false, false, { { Key::P, false, false, false } }, "p.wav" },
+    { Key::P, true, false, false, { { Key::P, true, false, false } }, "p.wav" },
+    { Key::Q, false, false, false, { { Key::Q, false, false, false } }, "q.wav" },
+    { Key::Q, true, false, false, { { Key::Q, true, false, false } }, "q.wav" },
+    { Key::R, false, false, false, { { Key::R, false, false, false } }, "r.wav" },
+    { Key::R, true, false, false, { { Key::R, true, false, false } }, "r.wav" },
+    { Key::S, false, false, false, { { Key::S, false, false, false } }, "s.wav" },
+    { Key::S, true, false, false, { { Key::S, true, false, false } }, "s.wav" },
+    { Key::T, false, false, false, { { Key::T, false, false, false } }, "t.wav" },
+    { Key::T, true, false, false, { { Key::T, true, false, false } }, "t.wav" },
+    { Key::U, false, false, false, { { Key::U, false, false, false } }, "u.wav" },
+    { Key::U, true, false, false, { { Key::U, true, false, false } }, "u.wav" },
+    { Key::U, false, false, true, { { Key::U, false, false, false } }, "uu.wav" },
+    { Key::V, false, false, false, { { Key::V, false, false, false } }, "v.wav" },
+    { Key::V, true, false, false, { { Key::V, true, false, false } }, "v.wav" },
+    { Key::W, false, false, false, { { Key::W, false, false, false } }, "w.wav" },
+    { Key::W, true, false, false, { { Key::W, true, false, false } }, "w.wav" },
+    { Key::X, false, false, false, { { Key::X, false, false, false } }, "x.wav" },
+    { Key::X, true, false, false, { { Key::X, true, false, false } }, "x.wav" },
+    { Key::Y, false, false, false, { { Key::Y, false, false, false } }, "y.wav" },
+    { Key::Y, true, false, false, { { Key::Y, true, false, false } }, "y.wav" },
+    { Key::Y, false, true, false, { { Key::Y } }, "i.wav", false, CapsLock::Ignore },  // Not a mistake: Ctrl+Y should give 'y' with sound 'i'
+    { Key::Y, false, false, true, { { Key::Y } }, "j.wav", false, CapsLock::Ignore },
+    { Key::Z, false, false, false, { { Key::Z, false, false, false } }, "z.wav" },
+    { Key::Z, true, false, false, { { Key::Z, true, false, false } }, "z.wav" },
+};
+
+// Layout provider implementation
+class FlemishClassicLayout : public Dyscover::ILayoutProvider {
+public:
+    const std::vector<KeyTranslationEntry>& GetEntries() const override {
+        return g_flemishClassic;
+    }
+    const char* GetName() const override { return "flemishclassic"; }
+    const char* GetLanguage() const override { return "nl_be"; }
+};
+
+// Static registration
+static FlemishClassicLayout s_layout;
+static bool s_registered = []() {
+    Dyscover::LayoutRegistry::Instance().Register("flemishclassic", &s_layout);
+    return true;
+}();
+
+} // namespace

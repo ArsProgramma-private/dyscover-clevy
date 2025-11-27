@@ -1,125 +1,219 @@
-# Tasks: Language-Specific Resource Optimization
+# Tasks: Layout-Based Resource Organization (Phase 2)
 
-**Feature Branch**: `006-language-resource-optimization`  
-**Input**: Specification from `spec.md` with clarifications from 2025-11-27  
-**Context**: Optimize build to include only language-specific audio and TTS files based on selected language configuration
+**Feature**: 006-language-resource-optimization (Phase 2 Enhancement)  
+**Input**: Design documents from `/specs/006-language-resource-optimization/`  
+**Prerequisites**: plan.md, spec.md (Future Enhancements), research.md, data-model.md, contracts/, quickstart.md
 
-## Format: `[ID] [P?] [Story?] Description`
+**Note**: This feature is a DEFERRED ENHANCEMENT from the main 006 feature. It restructures the already-working language resource optimization into a hierarchical layout-based organization for better scalability.
+
+Constitution Alignment:
+- Failing tests FIRST for CMake discovery logic (Testing Standards)
+- Performance benchmarks for CMake config time (Performance Principle)
+- No UI changes, build-time only (UX Consistency N/A)
+- Migration script complexity tracked and time-boxed (Complexity Tracking)
+
+## Format: `- [ ] [ID] [P?] Description with file path`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (US1, US2, US3)
-- Include exact file paths in descriptions
-
-## Constitution Alignment
-
-- Code Quality: Resource extraction script kept under 50 LOC per function
-- Testing Standards: Build validation tested with intentional error injection
-- Performance: Build-time extraction minimizes reconfiguration overhead
-- Exceptions: None anticipated
+- Include exact file paths
 
 ---
 
-## Phase 1: Setup (Shared Infrastructure)
+## Phase 1: Setup (Project Initialization)
 
-**Purpose**: Create resource extraction tooling infrastructure
+**Purpose**: Prepare for migration - no code changes yet
 
-- [X] T001 Create scripts directory structure for resource extraction at `scripts/build-tools/`
-- [X] T002 [P] Create CMake module for resource manifest generation at `cmake/ResourceManifest.cmake`
-- [X] T003 [P] Document build system changes in `specs/006-language-resource-optimization/implementation-notes.md`
+- [X] T001 Create directory structure for migration script in scripts/migration/
+- [X] T002 [P] Create CMake module placeholder in cmake/LayoutDiscovery.cmake
+- [X] T003 [P] Create build tool placeholders in scripts/build-tools/discover-layouts.cmake and validate-layout-structure.cmake
+- [X] T004 [P] Create C++ header placeholders in src/layouts/LayoutLoader.h and LayoutRegistry.h
+- [X] T005 Document current state baseline: file counts, sizes, structure in specs/006-language-resource-optimization/baseline.md
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Core resource extraction and validation infrastructure - MUST complete before ANY user story implementation
+**Purpose**: Core infrastructure that MUST be complete before migration can begin
 
-**⚠️ CRITICAL**: No user story work can begin until this phase is complete
+**⚠️ CRITICAL**: No migration work can begin until this phase is complete
 
-- [X] T004 Create resource extraction script `scripts/build-tools/extract-audio-resources.cmake` that parses Keys.cpp and extracts audio filenames from KeyTranslationEntry::sound fields
-- [X] T005 Add CMake function `generate_resource_manifest()` in `cmake/ResourceManifest.cmake` that invokes extraction script and creates manifest file
-- [X] T006 Create validation script `scripts/build-tools/validate-resources.cmake` that checks if all files in manifest exist in `res/data/`
-- [X] T007 Add error collection logic to validation script that accumulates all missing files before reporting (not fail-fast)
-- [X] T008 Integrate pre-build resource extraction into CMakeLists.txt using `add_custom_command` with PRE_BUILD event
+- [X] T006 Implement validate_layout_structure() function in scripts/build-tools/validate-layout-structure.cmake per contracts/layout-api.md
+- [X] T007 Implement extract_audio_references() function in scripts/build-tools/extract-audio-references.cmake (reuse existing logic)
+- [X] T008 Implement discover_layouts() function in scripts/build-tools/discover-layouts.cmake per contracts/layout-api.md
+- [X] T009 Add feature flag USE_LAYOUT_STRUCTURE to CMakeLists.txt (default OFF) around line 50
+- [X] T010 Implement ILayoutProvider interface in src/layouts/LayoutLoader.h per contracts/layout-api.md
+- [X] T011 Implement LayoutRegistry class in src/layouts/LayoutRegistry.h and .cpp per contracts/layout-api.md
 
-**Checkpoint**: Foundation ready - resource extraction and validation pipeline established
-
----
-
-## Phase 3: User Story 1 - Smaller Distribution Packages (Priority: P1) 🎯 MVP
-
-**Goal**: Build packages contain only language-specific resources, reducing size by 40%+
-
-**Independent Test**: Build for Dutch (LANGUAGE=nl), verify output contains only Dutch audio files and no Flemish resources, measure package size reduction
-
-### Implementation for User Story 1
-
-- [X] T009 [P] [US1] Modify `scripts/build-tools/extract-audio-resources.cmake` to filter audio files by LANGUAGE preprocessor define (check for `#if defined __LANGUAGE_NL__` or `#elif defined __LANGUAGE_NL_BE__` blocks)
-- [X] T010 [P] [US1] Update TTS resource collection in CMakeLists.txt (lines ~616-623) to use TTS_LANG and TTS_VOICE variables instead of copying all tts/data/* files
-- [X] T011 [US1] Replace `file(GLOB SOUND_FILES "res/data/*.wav")` at line ~605 in CMakeLists.txt with manifest-based file list from resource extraction
-- [X] T012 [US1] Update `add_custom_command` for audio copying (lines ~607-612) to use filtered manifest list instead of SOUND_FILES glob
-- [X] T013 [US1] Update `install(FILES ${SOUND_FILES} DESTINATION audio)` at line ~617 to use filtered manifest list
-- [X] T014 [US1] Verify Dutch build: Run `cmake -DLANGUAGE=nl` and `make`, check build/audio/ contains only Dutch-referenced files
-- [X] T015 [US1] Verify Flemish build: Run `cmake -DLANGUAGE=nl_be` and `make`, check build/audio/ contains only Flemish-referenced files
-- [X] T016 [US1] Measure package size reduction: Compare new Dutch/Flemish packages vs baseline all-inclusive package, verify ≥40% reduction
-
-**Checkpoint**: Builds produce language-specific packages with verified size reduction
+**Checkpoint**: Foundation ready - migration script can now be implemented
 
 ---
 
-## Phase 4: User Story 2 - Compile-Time Resource Validation (Priority: P2)
+## Phase 3: Migration Implementation (3-Phase Rollout Structure)
 
-**Goal**: Build fails with comprehensive error message if any referenced audio file is missing
+**Goal**: Create migration tooling that safely transforms flat structure to hierarchical
 
-**Independent Test**: Temporarily rename an audio file referenced in Keys.cpp, run build, verify build fails with complete list of all missing files
+**Independent Test**: Run migration script with --dry-run, verify correct file moves planned
 
-### Implementation for User Story 2
+### Tests for Migration Script
 
-- [X] T017 [P] [US2] Enhance `scripts/build-tools/validate-resources.cmake` to parse manifest and check existence of each file in `res/data/`
-- [X] T018 [P] [US2] Add error accumulation to validation script: collect all missing files into list before generating error message
-- [X] T019 [US2] Format comprehensive error message showing: "Missing audio files for language [LANGUAGE]: file1.wav, file2.wav, file3.wav referenced in layouts: [layout names]"
-- [X] T020 [US2] Add validation for TTS resources: check that ${TTS_LANG}.db, ${TTS_LANG}.fsa, ${TTS_LANG}.fst, ${TTS_VOICE}.db, ${TTS_VOICE}.fon, ${TTS_VOICE}.udb exist in res/data/tts/data/
-- [X] T021 [US2] Integrate validation into CMakeLists.txt as mandatory build step via `execute_process` during configuration phase
-- [X] T022 [US2] Create test case: Rename a.wav to a_missing.wav, run cmake, verify build fails with error listing a.wav and which layouts reference it
-- [X] T023 [US2] Create test case: Add non-existent "xyz.wav" to Keys.cpp g_dutchDefault, verify build fails with clear error
-- [X] T024 [US2] Verify error timing: Ensure validation completes and reports within 10 seconds of build start
+> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-**Checkpoint**: Build validation catches all missing resources with comprehensive error reporting
+- [X] T012 [P] Integration test: Dry-run migration produces correct file move plan in tests/integration/test_migration_dry_run.sh
+- [X] T013 [P] Integration test: Migration creates valid layout directory structure in tests/integration/test_migration_structure.sh
+- [X] T014 [P] Integration test: Migrated layout.cpp files compile successfully in tests/integration/test_migration_compile.sh
 
----
+### Implementation for Migration Script
 
-## Phase 5: User Story 3 - Multi-Language Build Support (Priority: P3)
+- [X] T015 Create migration script scripts/migration/migrate-to-layouts.sh with --dry-run support
+- [X] T016 Implement Keys.cpp parsing to identify layout boundaries (g_dutchDefault, g_flemishClassic, etc.) in migrate-to-layouts.sh
+- [X] T017 Implement audio file attribution logic: map each .wav to layouts that reference it in migrate-to-layouts.sh
+- [X] T018 Implement TTS file attribution logic: map TTS files to language codes in migrate-to-layouts.sh
+- [X] T019 Implement directory creation for res/layouts/{type}/{lang}/ structure in migrate-to-layouts.sh
+- [X] T020 Implement layout.cpp splitting: extract each layout into separate files in migrate-to-layouts.sh
+- [X] T021 Implement audio file copying to layout-specific audio/ directories in migrate-to-layouts.sh
+- [X] T022 Implement TTS file copying to layout-specific tts/ directories in migrate-to-layouts.sh
+- [X] T023 Implement symlink creation for shared audio files (with Windows fallback to copy) in migrate-to-layouts.sh
+- [X] T024 Add validation: verify all files moved, no orphans, no duplicates in migrate-to-layouts.sh
+- [X] T025 Add rollback capability: script can undo migration on error in migrate-to-layouts.sh
+- [X] T026 Generate migration report with file counts, sizes, validation results in migrate-to-layouts.sh
 
-**Goal**: Support building packages for all languages without manual intervention, enable CI/CD automation
-
-**Independent Test**: Run multi-language build script, verify separate packages generated for nl and nl_be with correct naming and language-specific resources
-
-### Implementation for User Story 3
-
-- [X] T025 [P] [US3] Create multi-language build script `scripts/build-all-languages.sh` that iterates through supported languages (nl, nl_be)
-- [X] T026 [P] [US3] Add language-specific build directory naming to script: build-nl/, build-nl_be/ to avoid conflicts
-- [X] T027 [US3] Implement parallel build support in script using `cmake --build --parallel` for each language
-- [X] T028 [US3] Add package naming logic to ensure distinct filenames: Dyscover-nl-${VERSION}-${PLATFORM}.zip, Dyscover-nl_be-${VERSION}-${PLATFORM}.zip
-- [X] T029 [US3] Update build-windows.ps1 (line ~176) to support `-Language` parameter properly integrated with resource extraction
-- [X] T030 [US3] Update scripts/quick-build-linux.sh to support language switching without CMake reconfiguration via pre-build extraction
-- [X] T031 [US3] Test multi-language build: Run `scripts/build-all-languages.sh`, verify two distinct packages created
-- [X] T032 [US3] Verify package independence: Unpack both packages, confirm Dutch package has zero Flemish files and vice versa
-- [X] T033 [US3] Create CI/CD workflow example in `.github/workflows/multi-language-build.yml` demonstrating parallel language builds
-
-**Checkpoint**: All languages can be built independently with proper isolation and naming
+**Checkpoint**: Migration script complete and tested on copy of repository
 
 ---
 
-## Phase 6: Polish & Cross-Cutting Concerns
+## Phase 4: CMake Integration for New Structure
 
-**Purpose**: Documentation, testing, and final validation
+**Goal**: Build system can discover and build from new hierarchical structure
 
-- [X] T034 [P] Update CMakeLists.txt comments to explain resource extraction and manifest generation process
-- [X] T035 [P] Add developer documentation in `specs/006-language-resource-optimization/developer-guide.md` explaining how to add new languages
-- [X] T036 [P] Update README.md with new build process details and language-specific packaging information
-- [X] T037 Create validation script `scripts/validate-resource-optimization.sh` that builds all languages and verifies package size reductions
-- [X] T038 Run complete validation: Build all languages, verify SC-001 through SC-007 success criteria from spec.md
-- [X] T039 Performance verification: Confirm resource extraction adds <5 seconds to build time
-- [X] T040 Clean up any temporary debugging output from extraction scripts
+**Independent Test**: Build with USE_LAYOUT_STRUCTURE=ON produces working binary
+
+### Tests for CMake Discovery
+
+- [X] T027 [P] Integration test: discover_layouts() finds all layout.cpp files in tests/integration/test_cmake_discovery.sh
+- [X] T028 [P] Integration test: validate_layout_structure() catches invalid layouts in tests/integration/test_cmake_validation.sh
+- [X] T029 [P] Integration test: Build with new structure produces binary equivalent to old structure in tests/integration/test_binary_equivalence.sh
+
+### Implementation for CMake Discovery
+
+- [X] T030 [P] Implement discover_layouts() in cmake/LayoutDiscovery.cmake (file GLOB_RECURSE for res/layouts/*/*/layout.cpp)
+- [X] T031 [P] Implement validate_layout_structure() in cmake/LayoutDiscovery.cmake (check audio/, tts/, layout.cpp exist)
+- [X] T032 [P] Implement generate_layout_manifest() in cmake/LayoutDiscovery.cmake per contracts/layout-api.md
+- [X] T033 Update CMakeLists.txt: Add conditional logic for USE_LAYOUT_STRUCTURE flag around line 200
+- [X] T034 Update CMakeLists.txt: When flag ON, call discover_layouts() and add found sources to target
+- [X] T035 Update cmake/ResourceManifest.cmake: Support both old and new resource paths
+- [X] T036 Test CMake configuration with USE_LAYOUT_STRUCTURE=ON on Linux build
+- [ ] T037 [P] Test CMake configuration with USE_LAYOUT_STRUCTURE=ON on Windows build
+- [ ] T038 [P] Test CMake configuration with USE_LAYOUT_STRUCTURE=ON on macOS build
+
+**Checkpoint**: Build system fully supports new structure, parallel to old structure
+
+---
+
+## Phase 5: Runtime Layout Loading (C++ Implementation)
+
+**Goal**: Runtime can load layouts from new modular structure
+
+**Independent Test**: Application starts and selects correct layout based on LANGUAGE
+
+### Tests for Layout Loading
+
+- [ ] T039 [P] Unit test: LayoutRegistry registers and retrieves layouts correctly in tests/unit/test_layout_registry.cpp
+- [ ] T040 [P] Integration test: Application loads Dutch classic layout successfully in tests/integration/test_layout_loading.cpp
+
+### Implementation for Layout Loading
+
+- [X] T041 Implement LayoutRegistry::Register() in src/layouts/LayoutRegistry.cpp
+- [X] T042 Implement LayoutRegistry::GetLayout() in src/layouts/LayoutRegistry.cpp
+- [X] T043 Implement LayoutRegistry::GetActiveLayout() based on compile-time LANGUAGE flag in src/layouts/LayoutRegistry.cpp
+- [X] T044 Update src/Keys.cpp: Convert to thin dispatcher using extern declarations
+- [X] T045 Update src/Keys.cpp: Implement FindTranslation() to use LayoutRegistry::GetActiveLayout()
+- [X] T046 Create example layout module: examples/layout-module-example-dutch-classic.cpp with DutchClassicLayout class
+- [X] T047 [P] Create example layout module: examples/layout-module-example-flemish-classic.cpp with FlemishClassicLayout class
+- [ ] T048 Test runtime layout selection with LANGUAGE=nl build
+- [ ] T049 [P] Test runtime layout selection with LANGUAGE=nl_be build
+
+**Checkpoint**: Runtime successfully loads layouts from new structure
+
+---
+
+## Phase 6: Migration Execution & Validation (Phase 1 of 3-Phase Rollout)
+
+**Goal**: Execute migration, establish parallel structure, validate equivalence
+
+**Independent Test**: Both old and new structures build successfully, binaries equivalent
+
+- [ ] T050 Backup current repository state: create backup branch 006-pre-migration
+- [ ] T051 Run migration script with --dry-run, review output for correctness
+- [ ] T052 Execute migration script (creates res/layouts/ structure)
+- [ ] T053 Verify new structure: check all layout.cpp files compile individually
+- [ ] T054 Verify new structure: check all audio files present in layout-specific directories
+- [ ] T055 Verify new structure: check all TTS files present in layout-specific directories
+- [ ] T056 Build with USE_LAYOUT_STRUCTURE=OFF (old structure), save binary as dyscover-old
+- [ ] T057 Build with USE_LAYOUT_STRUCTURE=ON (new structure), save binary as dyscover-new
+- [ ] T058 Compare binaries: verify functional equivalence (same layout data, same audio files)
+- [ ] T059 Run full test suite with old structure (USE_LAYOUT_STRUCTURE=OFF), verify all pass
+- [ ] T060 Run full test suite with new structure (USE_LAYOUT_STRUCTURE=ON), verify all pass
+- [ ] T061 Benchmark CMake configuration time: old vs new (target: <5s increase)
+- [ ] T062 Benchmark build time: old vs new (target: <10% increase)
+- [ ] T063 Update CI to build BOTH structures in parallel in .github/workflows/test-migration.yml
+- [ ] T064 Commit migration changes with clear documentation
+
+**Checkpoint**: Parallel structure validated, both old and new work, CI passing
+
+---
+
+## Phase 7: Default Switchover (Phase 2 of 3-Phase Rollout)
+
+**Goal**: Make new structure the default, monitor for issues
+
+**Independent Test**: Default builds use new structure, old structure available for rollback
+
+- [ ] T065 Update CMakeLists.txt: Change USE_LAYOUT_STRUCTURE default from OFF to ON
+- [ ] T066 Update documentation: specs/006-language-resource-optimization/developer-guide.md with new structure
+- [ ] T067 Update documentation: README.md project structure section
+- [ ] T068 Update documentation: quickstart.md for adding new languages
+- [ ] T069 Notify team: Send migration Phase 2 announcement per quickstart.md template
+- [ ] T070 Monitor CI for 1 week: watch for build failures or performance regressions
+- [ ] T071 Gather developer feedback: survey team on new structure experience
+- [ ] T072 Address any issues: fix bugs or improve tooling based on feedback
+
+**Checkpoint**: New structure is default, stable for 1 week, team feedback positive
+
+---
+
+## Phase 8: Cleanup (Phase 3 of 3-Phase Rollout)
+
+**Goal**: Remove old structure, finalize migration
+
+**Independent Test**: Build succeeds without old structure, all tests pass
+
+- [ ] T073 Archive old structure: git mv src/Keys.cpp src/Keys.cpp.legacy
+- [ ] T074 Archive old structure: git mv res/data res/data.legacy
+- [ ] T075 Wait 1 week with archived structure (safety period for rollback)
+- [ ] T076 Remove archived files: git rm src/Keys.cpp.legacy and res/data.legacy
+- [ ] T077 Remove feature flag: Delete USE_LAYOUT_STRUCTURE option from CMakeLists.txt
+- [ ] T078 Simplify CMakeLists.txt: Remove old structure conditional logic
+- [ ] T079 Remove migration script: git rm scripts/migration/migrate-to-layouts.sh (one-time use complete)
+- [ ] T080 Update CI: Remove dual-structure builds, keep only new structure in .github/workflows/
+- [ ] T081 Final documentation pass: Remove all references to old structure
+- [ ] T082 Final testing: Full test suite on all platforms (Linux, Windows, macOS)
+
+**Checkpoint**: Migration complete, old structure removed, documentation updated
+
+---
+
+## Phase 9: Polish & Enhancements
+
+**Purpose**: Improvements now that base restructuring is complete
+
+- [ ] T083 [P] Add metadata.json support to each layout directory per data-model.md
+- [ ] T084 [P] Create layout validation tool: scripts/validate-all-layouts.sh
+- [ ] T085 [P] Performance optimization: Cache layout discovery results during CMake config
+- [ ] T086 [P] Developer tooling: Add layout creation script scripts/create-new-layout.sh
+- [ ] T087 [P] Documentation: Create video walkthrough of adding a new language
+- [ ] T088 Code cleanup: Review and refactor LayoutRegistry for complexity <10
+- [ ] T089 Code cleanup: Review migration artifacts, ensure all temporary code removed
+- [ ] T090 Run validation suite from quickstart.md: verify all success criteria met
 
 ---
 
@@ -128,147 +222,168 @@
 ### Phase Dependencies
 
 - **Setup (Phase 1)**: No dependencies - can start immediately
-- **Foundational (Phase 2)**: Depends on T001-T003 completion - BLOCKS all user stories
-- **User Stories (Phase 3-5)**: All depend on Foundational (T004-T008) completion
-  - US1 can proceed independently after Phase 2
-  - US2 depends on US1 completion (T009-T016) to have filtering in place for validation
-  - US3 can start after Phase 2 but benefits from US1+US2 validation being complete
-- **Polish (Phase 6)**: Depends on all user stories (T009-T033) being complete
+- **Foundational (Phase 2)**: Depends on Setup - BLOCKS all other phases
+- **Migration Implementation (Phase 3)**: Depends on Foundational
+- **CMake Integration (Phase 4)**: Depends on Foundational
+- **Runtime Loading (Phase 5)**: Depends on CMake Integration (needs build to work)
+- **Migration Execution (Phase 6)**: Depends on phases 3, 4, 5 all complete (full stack ready)
+- **Default Switchover (Phase 7)**: Depends on Migration Execution validated
+- **Cleanup (Phase 8)**: Depends on Default Switchover stable for 1 week
+- **Polish (Phase 9)**: Depends on Cleanup complete
 
-### User Story Dependencies
+### Critical Path
 
-- **User Story 1 (P1 - T009-T016)**: Can start after Foundational - No dependencies on other stories
-- **User Story 2 (P2 - T017-T024)**: Depends on US1 filtering logic (needs manifest to validate) - Start after T011 complete
-- **User Story 3 (P3 - T025-T033)**: Can start after Foundational - Independent of US1/US2 but should verify their functionality
-
-### Within Each User Story
-
-**User Story 1 Flow**:
-1. T009, T010 can run in parallel (different concerns: audio extraction vs TTS)
-2. T011 must complete before T012, T013 (manifest-based copying depends on extraction)
-3. T014, T015 can run in parallel (independent build tests)
-4. T016 runs last (requires completed builds to measure)
-
-**User Story 2 Flow**:
-1. T017, T018, T019, T020 can run in parallel (different validation aspects)
-2. T021 integrates validation (requires T017-T020)
-3. T022, T023, T024 can run in parallel (independent test cases)
-
-**User Story 3 Flow**:
-1. T025, T026, T027, T028 can be developed in parallel (different script aspects)
-2. T029, T030 can run in parallel (different platform build scripts)
-3. T031-T033 run sequentially (each validates previous work)
-
-### Parallel Opportunities
-
-```bash
-# Phase 1: All setup tasks in parallel
-T001 & T002 & T003
-
-# Phase 2: Foundational tasks are sequential (each builds on previous)
-
-# User Story 1: Parallel extraction development
-T009 & T010  # Audio and TTS extraction independently
-
-# User Story 1: Parallel build validation
-T014 & T015  # Dutch and Flemish builds independently
-
-# User Story 2: Parallel validation development  
-T017 & T018 & T019 & T020  # Different validation concerns
-
-# User Story 2: Parallel test cases
-T022 & T023 & T024  # Independent error injection tests
-
-# User Story 3: Parallel script development
-T025 & T026 & T027 & T028  # Multi-language build script components
-T029 & T030  # Platform-specific build script updates
-
-# Phase 6: All documentation in parallel
-T034 & T035 & T036  # Different documentation targets
 ```
+Setup → Foundational → Migration Impl → Migration Execution → Switchover → Cleanup → Polish
+                     ↘                ↗
+                       CMake Integration
+                     ↘                ↗
+                       Runtime Loading
+```
+
+### Parallel Opportunities Within Phases
+
+**Phase 2 (Foundational)**: All tasks can run in parallel (different files)
+- T006-T011 (6 tasks in parallel)
+
+**Phase 3 (Migration Tests)**: All test files can be created in parallel
+- T012-T014 (3 tests in parallel)
+
+**Phase 3 (Migration Implementation)**: T016-T018 can run in parallel (different aspects)
+- Audio attribution, TTS attribution, parsing logic
+
+**Phase 4 (CMake Tests)**: All test files can be created in parallel
+- T027-T029 (3 tests in parallel)
+
+**Phase 4 (CMake Implementation)**: T030-T032 can run in parallel (different functions)
+- discover_layouts(), validate_layout_structure(), generate_layout_manifest()
+
+**Phase 4 (Platform Testing)**: T037-T038 can run in parallel
+- Windows and macOS builds simultaneously
+
+**Phase 5 (Runtime Tests)**: T039-T040 can run in parallel
+- Unit test and integration test different files
+
+**Phase 5 (Layout Modules)**: T046-T047 can run in parallel
+- Dutch and Flemish layout modules
+
+**Phase 9 (Polish)**: Most tasks T083-T087 can run in parallel (different files/tools)
 
 ---
 
-## Parallel Example: User Story 1
-
-**Scenario**: Implementing resource filtering
+## Parallel Example: Foundational Phase
 
 ```bash
-# Step 1: Develop extraction and TTS filtering in parallel
-Developer A: T009 - Audio extraction filtering in extract-audio-resources.cmake
-Developer B: T010 - TTS resource variable-based collection in CMakeLists.txt
-
-# Step 2: Integrate manifest-based copying (sequential)
-Developer A: T011 - Replace glob with manifest
-Developer A: T012 - Update build-time copying
-Developer A: T013 - Update install rules
-
-# Step 3: Validate builds in parallel
-Developer A: T014 - Test Dutch build
-Developer B: T015 - Test Flemish build
-
-# Step 4: Final verification
-Developer A: T016 - Measure package size reduction
+# All foundational tasks can run simultaneously (different files):
+Developer A: T006 - validate_layout_structure() in scripts/build-tools/validate-layout-structure.cmake
+Developer B: T007 - extract_audio_references() in scripts/build-tools/extract-audio-references.cmake
+Developer C: T008 - discover_layouts() in scripts/build-tools/discover-layouts.cmake
+Developer D: T009 - Feature flag in CMakeLists.txt
+Developer E: T010 - ILayoutProvider interface in src/layouts/LayoutLoader.h
+Developer F: T011 - LayoutRegistry class in src/layouts/LayoutRegistry.h/cpp
 ```
 
 ---
 
 ## Implementation Strategy
 
-### MVP First (User Story 1 Only)
+### Recommended Approach: Sequential Phases
 
-1. Complete Phase 1: Setup (T001-T003) - ~2 hours
-2. Complete Phase 2: Foundational (T004-T008) - ~1 day
-   - **CRITICAL CHECKPOINT**: Resource extraction pipeline working
-3. Complete Phase 3: User Story 1 (T009-T016) - ~2 days
-   - **STOP and VALIDATE**: Build Dutch package, verify 40% size reduction
-4. **MVP COMPLETE**: Language-specific packages ready for distribution
+Due to the migration nature of this project, **sequential phase execution is strongly recommended**:
 
-**Estimated MVP Delivery**: 3-4 days
+1. **Phase 1-2**: Setup + Foundational (1-2 days)
+   - Parallel within phases, but complete fully before moving on
 
-### Incremental Delivery
+2. **Phase 3-5**: Build complete migration stack (1-2 weeks)
+   - Can parallelize work across these phases by different developers
+   - Developer A: Migration script (Phase 3)
+   - Developer B: CMake integration (Phase 4)
+   - Developer C: Runtime loading (Phase 5)
+   - **CRITICAL**: All three must complete before Phase 6
 
-1. **Sprint 1**: Setup + Foundational → Resource extraction pipeline ready
-2. **Sprint 2**: User Story 1 → MVP (language-specific packages) → **DEPLOY**
-3. **Sprint 3**: User Story 2 → Build validation → **DEPLOY** (improved DX)
-4. **Sprint 4**: User Story 3 → Multi-language automation → **DEPLOY** (CI/CD ready)
-5. **Sprint 5**: Polish → Documentation and final validation
+3. **Phase 6**: Migration Execution (1 week)
+   - Execute migration, validate equivalence
+   - **STOP**: Wait for CI green, team validation before proceeding
 
-### Parallel Team Strategy
+4. **Phase 7**: Default Switchover (1 week)
+   - Monitor in production/dev use
+   - **STOP**: Stable for 1 week minimum before cleanup
 
-With 2 developers:
+5. **Phase 8**: Cleanup (2-3 days)
+   - Remove old structure permanently
 
-1. **Week 1**: Both complete Setup + Foundational together
-2. **Week 2**: 
-   - Dev A: US1 (T009-T016) - Package size optimization
-   - Dev B: US3 (T025-T033) - Multi-language build infrastructure
-3. **Week 3**:
-   - Dev A: US2 (T017-T024) - Build validation (requires US1 manifest)
-   - Dev B: Polish (T034-T040) - Documentation
-4. **Week 4**: Joint validation and deployment
+6. **Phase 9**: Polish (ongoing)
+   - Enhancements and improvements
+
+**Total Estimated Time**: 4-6 weeks for complete migration
+
+### Risk Mitigation
+
+- Each phase has explicit checkpoints - do not proceed if checkpoint fails
+- Phases 6-8 are time-gated (cannot rush)
+- Rollback is possible until Phase 8 cleanup
+- Feature flag enables instant rollback at any time
+- Dual-structure support ensures safety net
+
+---
+
+## Validation Checkpoints
+
+After each major phase, validate:
+
+**After Phase 2 (Foundational)**:
+- ✅ All CMake functions compile without errors
+- ✅ All C++ headers compile without errors
+- ✅ Feature flag toggles between old/new logic successfully
+
+**After Phase 5 (Runtime Loading)**:
+- ✅ Test build with new structure completes
+- ✅ Test application starts and loads correct layout
+- ✅ No runtime errors in layout selection
+
+**After Phase 6 (Migration Execution)**:
+- ✅ New directory structure created successfully
+- ✅ Both old and new structures build and pass tests
+- ✅ Binary equivalence verified
+- ✅ Performance benchmarks within thresholds
+- ✅ CI passing on all platforms
+
+**After Phase 7 (Default Switchover)**:
+- ✅ New structure is default for 1 week
+- ✅ No critical issues reported
+- ✅ Team feedback collected and addressed
+- ✅ CI stable on all platforms
+
+**After Phase 8 (Cleanup)**:
+- ✅ Old structure completely removed
+- ✅ All tests pass without old structure
+- ✅ Documentation updated
+- ✅ No references to old structure remain
 
 ---
 
 ## Notes
 
-- All tasks T001-T008 (Foundational) must complete before any user story work begins
-- Resource extraction script should parse Keys.cpp at CMake configure time, not every build
-- Validation script must collect ALL errors before failing (per clarification session requirement)
-- Keep flat res/data/ structure (per clarification - no subdirectories by language)
-- Keys.cpp remains single file (per clarification - no restructuring)
-- Pre-build extraction enables CLI language switching without CMake reconfiguration
-- Success criteria SC-001 through SC-007 from spec.md must all pass for completion
-- Each user story delivers independent value and can be deployed separately
+- This is a **migration project** - careful, phased execution is critical
+- Do NOT rush through phases - time gates are safety measures
+- [P] tasks within a phase can run in parallel
+- Tests must FAIL before implementation (Test-Driven Development)
+- Commit frequently, especially after each phase checkpoint
+- Migration script complexity is tracked and time-boxed per constitution
+- Performance budgets must be met: <5s CMake config increase, <10% build time increase
+- Document all decisions and issues encountered during migration
 
 ---
 
-## Success Criteria Mapping
+## Success Criteria (from plan.md)
 
-- **SC-001, SC-002**: Verified by T016 (package size measurements)
-- **SC-003**: Verified by T014, T015 (build completion tests)
-- **SC-004**: Verified by T022, T023, T024 (error reporting tests)
-- **SC-005**: Verified by T031 (multi-language build test)
-- **SC-006**: Verified by T032 (package content audit)
-- **SC-007**: Verified by T022, T023 (error injection tests)
-
-All success criteria validated in T038 (comprehensive validation script).
+- ✅ CMake config time <8s (target: 6.8s measured)
+- ✅ Build time increase <10% (target: 6.7% measured)
+- ✅ Binary size unchanged
+- ✅ Runtime startup unchanged
+- ✅ All existing tests pass
+- ✅ Cross-platform builds succeed (Linux, Windows, macOS)
+- ✅ Migration script runs successfully
+- ✅ No functional regressions
+- ✅ Developer feedback positive
+- ✅ Documentation complete and accurate

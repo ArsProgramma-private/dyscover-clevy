@@ -105,3 +105,64 @@ Build system supports generating packages for all supported languages without ma
 - **SC-005**: CI/CD pipeline generates correct language-specific packages for all supported languages with 100% success rate
 - **SC-006**: Manual audit confirms that Dutch builds contain zero Flemish-specific resources and vice versa
 - **SC-007**: Resource validation catches 100% of missing or incorrect audio file references at build time (validated through intentional error injection tests)
+
+## Future Enhancements
+
+### Phase 2: Layout-Based Resource Organization
+
+**Context**: As more languages are added to the application, the current flat file structure (`res/data/*.wav`) and single-file layout definitions (`src/Keys.cpp`) may become difficult to maintain. A hierarchical organization based on keyboard layouts could improve scalability and maintainability.
+
+**Proposed Structure**:
+
+```
+res/
+├── layouts/
+│   ├── classic/
+│   │   ├── nl_nl/
+│   │   │   ├── layout.cpp          # Layout definition
+│   │   │   ├── audio/
+│   │   │   │   ├── a.wav
+│   │   │   │   ├── b.wav
+│   │   │   │   └── ...
+│   │   │   └── tts/
+│   │   │       ├── nl_nl.db
+│   │   │       └── ...
+│   │   ├── nl_be/
+│   │   │   ├── layout.cpp
+│   │   │   ├── audio/
+│   │   │   └── tts/
+│   │   └── en_us/
+│   │       ├── layout.cpp
+│   │       ├── audio/
+│   │       └── tts/
+│   ├── modern/
+│   │   ├── nl_nl/
+│   │   └── nl_be/
+│   └── accessible/
+│       ├── nl_nl/
+│       └── nl_be/
+```
+
+**Benefits**:
+
+1. **Clearer Organization**: Each layout variant (classic, modern, accessible) has its own subdirectory structure
+2. **Language Isolation**: All resources for a specific language/layout combination are co-located
+3. **Easier Maintenance**: Adding a new language means creating a new directory, not modifying shared files
+4. **Reduced Merge Conflicts**: Multiple developers can work on different languages simultaneously
+5. **Simplified Build Logic**: Directory structure directly maps to build requirements
+
+**Considerations**:
+
+- **Migration Effort**: Requires restructuring existing codebase and updating build system
+- **Shared Resources**: Some audio files may be common across layouts (need deduplication strategy)
+- **Build Complexity**: May require more sophisticated CMake logic to traverse directory structure
+- **Backward Compatibility**: Need migration path for existing configurations
+
+**Decision Deferred**: This restructuring is not required for the current optimization goals (package size reduction). It should be considered when:
+
+- More than 5 languages are supported
+- Multiple layout variants per language are introduced
+- Development team size increases and merge conflicts become frequent
+- New keyboard layout types are added beyond current variants
+
+**Related to**: FR-006 (which explicitly maintains current flat structure), Session clarification about keeping Keys.cpp as single file

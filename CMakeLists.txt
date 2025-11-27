@@ -14,6 +14,11 @@ set(CMAKE_SUPPRESS_REGENERATION TRUE)
 option(PACKAGING_ENABLE "Enable CPack/WiX packaging configuration" ON)
 option(PACKAGING_DEBUG_SYMBOLS "Install debug symbols with package (PDB/dSYM)" OFF)
 
+# Feature flag for layout-based resource organization (Phase 2 migration)
+# OFF (default): Use legacy flat structure (src/Keys.cpp, res/data/)
+# ON: Use new hierarchical structure (res/layouts/*/*/)
+option(USE_LAYOUT_STRUCTURE "Use new layout-based resource organization" OFF)
+
 option(ENABLE_CXX20 "Allow building with C++20 (optional)" OFF)
 if(ENABLE_CXX20)
   set(CMAKE_CXX_STANDARD 20)
@@ -25,6 +30,28 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Allow CI to skip optional librstts linking (some CI images don't provide the prebuilt binary)
 option(BUILD_WITH_LIBRSTTS "Link and package librstts runtime library" ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Layout structure integration (Phase 2)
+if(USE_LAYOUT_STRUCTURE)
+  message(STATUS "Using new layout-based resource structure")
+  include(cmake/LayoutDiscovery.cmake)
+  
+  # Discover layouts for selected language
+  if(DEFINED LANGUAGE)
+    discover_layouts(LAYOUT_SOURCES ${LANGUAGE})
+    list(LENGTH LAYOUT_SOURCES LAYOUT_COUNT)
+    message(STATUS "Discovered ${LAYOUT_COUNT} layouts for language: ${LANGUAGE}")
+    foreach(LAYOUT ${LAYOUT_SOURCES})
+      message(STATUS "  - ${LAYOUT}")
+    endforeach()
+  else()
+    message(WARNING "LANGUAGE not set, no layouts discovered")
+    set(LAYOUT_SOURCES "")
+  endif()
+else()
+  message(STATUS "Using legacy flat resource structure")
+  set(LAYOUT_SOURCES "")
+endif()
 
 add_executable(Dyscover WIN32
   src/App.cpp
@@ -71,6 +98,18 @@ add_executable(Dyscover WIN32
   src/platform/PlatformUtils.h
   src/platform/PlatformUtils.cpp
 )
+
+# Add discovered layout sources if using new structure
+if(USE_LAYOUT_STRUCTURE AND LAYOUT_SOURCES)
+  target_sources(Dyscover PRIVATE ${LAYOUT_SOURCES})
+  # Add layout registry implementation
+  target_sources(Dyscover PRIVATE
+    src/layouts/LayoutRegistry.cpp
+    src/layouts/LayoutRegistry.h
+    src/layouts/LayoutLoader.h
+  )
+  message(STATUS "Added ${LAYOUT_COUNT} layout modules to build")
+endif()
 
 # macOS bundle metadata (applies only on Apple platforms)
 if(APPLE)

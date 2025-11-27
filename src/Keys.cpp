@@ -4,6 +4,11 @@
 
 #include "Keys.h"
 
+// Layout-based resource organization (Phase 2)
+#ifdef USE_LAYOUT_STRUCTURE
+#include "layouts/LayoutRegistry.h"
+#endif
+
 enum class CapsLock
 {
     Ignore,
@@ -814,6 +819,16 @@ KeyTranslation FindTranslation(const std::vector<KeyTranslationEntry>& entries, 
 
 KeyTranslation TranslateKey(Key key, bool caps, bool shift, bool ctrl, bool alt, Layout layout)
 {
+#ifdef USE_LAYOUT_STRUCTURE
+    // New layout-based structure: use LayoutRegistry
+    const Dyscover::ILayoutProvider* activeLayout = Dyscover::LayoutRegistry::Instance().GetActiveLayout();
+    if (activeLayout) {
+        return FindTranslation(activeLayout->GetEntries(), key, caps, shift, ctrl, alt);
+    }
+    // Fallback to empty translation if no layout found
+    return KeyTranslation();
+#else
+    // Legacy flat structure: use direct layout references
     switch (layout)
     {
 #if defined __LANGUAGE_NL__
@@ -832,4 +847,5 @@ KeyTranslation TranslateKey(Key key, bool caps, bool shift, bool ctrl, bool alt,
     default:
         return KeyTranslation();
     }
+#endif
 }
