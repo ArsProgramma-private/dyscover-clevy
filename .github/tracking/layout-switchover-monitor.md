@@ -18,7 +18,7 @@
 ## CI Status Log
 | Date | Legacy Build | Layout Build | Tests | Notes |
 |------|--------------|--------------|-------|-------|
-| 2025-11-27 | ✅ | ✅ | ✅ | Switchover commit, warnings only |
+| 2025-11-27 | ✅ | ✅ | ⏳ | Switchover complete, CI workflow active, awaiting next push/PR for test validation |
 | 2025-11-28 | ☐ | ☐ | ☐ | (to be filled) |
 | 2025-11-29 | ☐ | ☐ | ☐ | |
 | 2025-11-30 | ☐ | ☐ | ☐ | |
@@ -37,6 +37,7 @@ Legend: ✅ pass, ❌ fail, ⚠ flaky, ☐ pending entry.
 ## Developer Feedback
 | Date | Positive (%) | Themes | Actions |
 |------|--------------|--------|---------|
+| 2025-11-27 | N/A | Switchover initiated, announcement pending distribution | Distribute phase7-announcement.md |
 | Mid-week | (pending) | | |
 | End-week | (pending) | | |
 
