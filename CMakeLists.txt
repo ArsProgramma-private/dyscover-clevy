@@ -7,6 +7,9 @@ project(Dyscover
   LANGUAGES CXX
 )
 
+# Suppress regeneration warnings caused by case-insensitive path mismatches on Windows
+set(CMAKE_SUPPRESS_REGENERATION TRUE)
+
 # Allow disabling packaging for faster local iteration (default: ON to preserve current behavior)
 option(PACKAGING_ENABLE "Enable CPack/WiX packaging configuration" ON)
 option(PACKAGING_DEBUG_SYMBOLS "Install debug symbols with package (PDB/dSYM)" OFF)
@@ -50,6 +53,8 @@ add_executable(Dyscover WIN32
   src/ResourceLoader.h
   src/SoundPlayer.cpp
   src/SoundPlayer.h
+  src/DebugLogger.cpp
+  src/DebugLogger.h
   src/Speech.cpp
   src/Speech.h
   src/TrayIcon.cpp
@@ -251,13 +256,14 @@ if(WIN32)
     set(LIBRSTTS_LIB_FILE "${CMAKE_BINARY_DIR}/lib/librstts.lib")
     if(CMAKE_SIZEOF_VOID_P EQUAL 4)
         set(LIBRSTTS_MACHINE "x86")
-        set(LIBRSTTS_DEF_FILE "${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/i686-pc-win32/librstts.dll.def")
-        set(LIBRSTTS_DLL_FILE "${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/i686-pc-win32/librstts-2.dll")
+        file(REAL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/i686-pc-win32/librstts.dll.def" LIBRSTTS_DEF_FILE)
+        file(REAL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/i686-pc-win32/librstts-2.dll" LIBRSTTS_DLL_FILE)
     elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
         set(LIBRSTTS_MACHINE "x64")
-        set(LIBRSTTS_DEF_FILE "${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/x86_64-pc-win64/librstts.dll.def")
-        set(LIBRSTTS_DLL_FILE "${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/x86_64-pc-win64/librstts-2.dll")
+        file(REAL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/x86_64-pc-win64/librstts.dll.def" LIBRSTTS_DEF_FILE)
+        file(REAL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lib/rstts/platforms/x86_64-pc-win64/librstts-2.dll" LIBRSTTS_DLL_FILE)
     endif()
+    file(REAL_PATH "${LIBRSTTS_LIB_FILE}" LIBRSTTS_LIB_FILE)
 
     # Generate .lib file
     add_custom_command(
@@ -355,13 +361,13 @@ endif()
 
 find_package(Gettext)
 if(Gettext_FOUND)
-  set(PO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/res/lang/${LANGUAGE}.po)
-  set(MO_FILE ${CMAKE_CURRENT_BINARY_DIR}/Dyscover.mo)
+  file(REAL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/res/lang/${LANGUAGE}.po" PO_FILE)
+  file(REAL_PATH "${CMAKE_CURRENT_BINARY_DIR}/Dyscover.mo" MO_FILE)
   set(HAVE_TRANSLATION 1)
   add_custom_command(
     MAIN_DEPENDENCY ${PO_FILE}
     OUTPUT ${MO_FILE}
-    COMMAND ${GETTEXT_MSGFMT_EXECUTABLE} ${PO_FILE} -o"${MO_FILE}"
+    COMMAND ${GETTEXT_MSGFMT_EXECUTABLE} ${PO_FILE} -o${MO_FILE}
   )
   target_sources(Dyscover PRIVATE ${MO_FILE})
   message(STATUS "Translations enabled: ${GETTEXT_MSGFMT_EXECUTABLE}")
@@ -593,13 +599,14 @@ endif()
 
 # Sounds
 file(GLOB SOUND_FILES "res/data/*.wav")
+list(LENGTH SOUND_FILES SOUND_FILES_COUNT)
+message(STATUS "Found ${SOUND_FILES_COUNT} audio files: ${SOUND_FILES}")
 add_custom_command(
     TARGET Dyscover POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:Dyscover>/audio
-)
-add_custom_command(
-    TARGET Dyscover POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SOUND_FILES} $<TARGET_FILE_DIR:Dyscover>/audio
+    COMMENT "Copying ${SOUND_FILES_COUNT} audio files to build directory"
+    VERBATIM
 )
 
 # Installation

@@ -12,7 +12,7 @@
 #include "Device.h"
 #include "SupportedDevices.h"
 #include <string>
-
+    
 DeviceWindows::DeviceWindows(IDeviceListener* pListener)
     : Device(pListener), wxFrame(nullptr, wxID_ANY, wxEmptyString)
 {

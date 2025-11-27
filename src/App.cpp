@@ -63,51 +63,60 @@ bool App::OnInit()
     // No need to save pointer here because wxSplashScreen will automatically delete itself.
     new wxSplashScreen(LoadSplashBitmap(), wxSPLASH_CENTRE_ON_SCREEN | wxSPLASH_TIMEOUT, 3000, nullptr, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSTAY_ON_TOP);
 
-    m_pDevice = Device::Create(this);
-    m_pCore = new Core(this, m_pConfig, m_pDevice);
-    m_pPreferencesDialog = new PreferencesDialog(this, m_pConfig);
-    m_pTrayIcon = new TrayIcon(this, m_pConfig);
+    // Initialize pointers to nullptr before attempting creation to ensure safe cleanup on failure
+    m_pDevice = nullptr;
+    m_pCore = nullptr;
+    m_pPreferencesDialog = nullptr;
+    m_pTrayIcon = nullptr;
+
+    try {
+        m_pDevice = Device::Create(this);
+        m_pCore = new Core(this, m_pConfig, m_pDevice);
+        m_pPreferencesDialog = new PreferencesDialog(this, m_pConfig);
+        m_pTrayIcon = new TrayIcon(this, m_pConfig);
+    } catch (const std::exception& e) {
+        wxMessageBox(wxString::Format(_("Failed to initialize application: %s"), e.what()), _("Clevy Dyscover"), wxSTAY_ON_TOP);
+        return false;
+    } catch (...) {
+        wxMessageBox(_("Failed to initialize application due to an unknown error."), _("Clevy Dyscover"), wxSTAY_ON_TOP);
+        return false;
+    }
 
     return true;
 }
 
 int App::OnExit()
 {
-    delete m_pTrayIcon;
-    delete m_pPreferencesDialog;
-    delete m_pDevice;
+    // Safe cleanup with nullptr checks
+    if (m_pTrayIcon) delete m_pTrayIcon;
+    if (m_pPreferencesDialog) delete m_pPreferencesDialog;
+    if (m_pDevice) delete m_pDevice;
 #ifdef __LICENSING_DEMO__
-    delete m_pDemoLicensing;
+    if (m_pDemoLicensing) delete m_pDemoLicensing;
 #endif
-    delete m_pCore;
-    delete m_pConfig;
+    if (m_pCore) delete m_pCore;
+    if (m_pConfig) delete m_pConfig;
 
-    delete m_pSingleInstanceChecker;
-    delete m_pLocale;
+    if (m_pSingleInstanceChecker) delete m_pSingleInstanceChecker;
+    if (m_pLocale) delete m_pLocale;
 
     return wxApp::OnExit();
 }
 
 void App::OnClevyKeyboardConnected()
 {
-    UpdatePreferencesDialog();
-
-#ifdef __LICENSING_FULL__
-    m_pTrayIcon->UpdateIcon();
-#endif
-
-    m_pCore->OnClevyKeyboardConnected();
+    // Note: Core receives device events directly from DeviceDetector and will
+    // call UpdatePreferencesDialog/UpdateTrayIcon as needed. This callback is
+    // from the deprecated Device class and should not forward to Core to avoid
+    // duplicate event handling.
 }
 
 void App::OnClevyKeyboardDisconnected()
 {
-    UpdatePreferencesDialog();
-
-#ifdef __LICENSING_FULL__
-    m_pTrayIcon->UpdateIcon();
-#endif
-
-    m_pCore->OnClevyKeyboardDisconnected();
+    // Note: Core receives device events directly from DeviceDetector and will
+    // call UpdatePreferencesDialog/UpdateTrayIcon as needed. This callback is
+    // from the deprecated Device class and should not forward to Core to avoid
+    // duplicate event handling.
 }
 
 void App::OnDemoTimeLimitExpired()
@@ -124,17 +133,23 @@ void App::ShowPreferencesDialog()
 
 void App::UpdatePreferencesDialog()
 {
-    m_pPreferencesDialog->TransferDataToWindow();
+    if (m_pPreferencesDialog)
+    {
+        m_pPreferencesDialog->TransferDataToWindow();
+    }
 }
 
 void App::UpdateTrayIcon()
 {
-    m_pTrayIcon->UpdateIcon();
+    if (m_pTrayIcon)
+    {
+        m_pTrayIcon->UpdateIcon();
+    }
 }
 
 bool App::IsClevyKeyboardPresent()
 {
-    return m_pDevice->IsClevyKeyboardPresent();
+    return m_pCore ? m_pCore->IsKeyboardConnected() : false;
 }
 
 #ifdef __LICENSING_DEMO__

@@ -6,6 +6,7 @@
 
 #include "ResourceLoader.h"
 #include "SoundPlayer.h"
+#include "DebugLogger.h"
 
 #ifndef __NO_PORTAUDIO__
 
@@ -281,6 +282,7 @@ void SoundPlayer::MixAudio(float* outputBuffer, unsigned long framesPerBuffer)
 SoundPlayer::SoundPlayer()
 {
     m_soundFilesPath = GetSoundFilesPath();
+    wxLogDebug("SoundPlayer initialized with path: %s", m_soundFilesPath);
 }
 
 SoundPlayer::~SoundPlayer()
@@ -295,6 +297,10 @@ void SoundPlayer::PlaySoundFile(const std::string& soundfile)
 
 void SoundPlayer::StopPlaying()
 {
+#ifdef _WIN32
+    PlaySoundA(NULL, NULL, 0); // Stop any playing sound
+#else
     wxSound::Stop();
+#endif
 }
 #endif // __NO_PORTAUDIO__

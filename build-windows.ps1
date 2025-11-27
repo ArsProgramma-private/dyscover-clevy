@@ -47,6 +47,7 @@ param(
   
   [ValidateSet('demo','full')] 
   [string]$Licensing = 'demo',
+  #[string]$Licensing = 'full',
   
   [ValidateSet('On','Off')] 
   [string]$Tests = 'Off',

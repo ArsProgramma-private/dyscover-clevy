@@ -80,6 +80,35 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 ```
 
+Fast debug builds (developer loop, recommended)
+```bash
+# Configure once (Ninja + Debug) and enable fast incremental builds:
+./scripts/quick-build-linux.sh configure
+
+# Incremental build (fast):
+./scripts/quick-build-linux.sh build
+
+# Run the app from the build tree:
+./scripts/quick-build-linux.sh run
+
+# Run unit tests (ctest runner):
+./scripts/quick-build-linux.sh test
+
+# Optional: change parallelism (e.g. 12 cores):
+JOBS=12 ./scripts/quick-build-linux.sh build
+```
+
+VS Code integration (F5)
+```text
+# The repository includes a small .vscode configuration to make F5 debugging easy on Linux.
+# 1. Run the configure step once: ./scripts/quick-build-linux.sh configure
+# 2. In VS Code select the "Debug Dyscover (build-debug)" configuration and press F5.
+#    The default preLaunchTask is the "build-debug" task which will do an incremental build.
+# 3. The debugger will launch the built binary from build-debug/ and set LD_LIBRARY_PATH so
+#    required shared libs from the build folder are resolved. Use the "Attach to Dyscover"
+#    configuration if you prefer to start the app outside VS Code and attach to the process.
+```
+
 #### macOS
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release

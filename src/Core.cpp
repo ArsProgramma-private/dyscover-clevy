@@ -11,6 +11,7 @@
 #include "Core.h"
 #include "Keyboard.h"
 #include "ResourceLoader.h"
+#include "DebugLogger.h"
 #include "platform/DeviceDetector.h"
 #include "platform/KeyboardHandler.h"
 #include "platform/AudioController.h"
@@ -35,8 +36,12 @@ Core::Core(App* pApp, Config* pConfig, Device* pDevice [[maybe_unused]])
     m_pKeyboard = Keyboard::Create(this);
     m_pSoundPlayer = new SoundPlayer();
     m_pSpeech = new Speech();
-    m_pSpeech->Init(GetTTSDataPath(), TTS_LANG, TTS_VOICE);
-    m_pSpeech->SetVolume(RSTTS_VOLUME_MAX);
+    try {
+        m_pSpeech->Init(GetTTSDataPath(), TTS_LANG, TTS_VOICE);
+        m_pSpeech->SetVolume(RSTTS_VOLUME_MAX);
+    } catch (...) {
+        wxLogWarning(LOG_TAG_SPEECH "Failed to initialize speech engine");
+    }
 
     // Device presence will be set by the detector's initial callback
     // during startMonitoring(), so initialize to false here
@@ -258,15 +263,47 @@ bool Core::OnKeyEvent(Key key, KeyEventType eventType, bool capsLock, bool shift
 void Core::OnClevyKeyboardConnected()
 {
     wxLogInfo(LOG_TAG_DEVICE "Clevy keyboard connected");
-    m_pSoundPlayer->PlaySoundFile("dyscover_connect_positive_with_voice.wav");
+    
+    if (m_pSoundPlayer) {
+        try {
+            m_pSoundPlayer->PlaySoundFile("dyscover_connect_positive_with_voice.wav");
+        } catch (...) {
+            wxLogWarning(LOG_TAG_DEVICE "Failed to play connection sound");
+        }
+    }
 
     m_bKeyboardConnected = true;
+    
+    // Notify App so it can update UI (preferences dialog, tray icon, etc.)
+    // Note: May be called during Core construction before App is fully initialized
+    if (m_pApp) {
+        m_pApp->UpdatePreferencesDialog();
+#ifdef __LICENSING_FULL__
+        m_pApp->UpdateTrayIcon();
+#endif
+    }
 }
 
 void Core::OnClevyKeyboardDisconnected()
 {
     wxLogInfo(LOG_TAG_DEVICE "Clevy keyboard disconnected");
-    m_pSoundPlayer->PlaySoundFile("dyscover_connect_negative_with_voice.wav");
+    
+    if (m_pSoundPlayer) {
+        try {
+            m_pSoundPlayer->PlaySoundFile("dyscover_connect_negative_with_voice.wav");
+        } catch (...) {
+            wxLogWarning(LOG_TAG_DEVICE "Failed to play disconnection sound");
+        }
+    }
 
     m_bKeyboardConnected = false;
+    
+    // Notify App so it can update UI (preferences dialog, tray icon, etc.)
+    // Note: May be called during Core construction before App is fully initialized
+    if (m_pApp) {
+        m_pApp->UpdatePreferencesDialog();
+#ifdef __LICENSING_FULL__
+        m_pApp->UpdateTrayIcon();
+#endif
+    }
 }

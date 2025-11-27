@@ -30,6 +30,8 @@ public:
     void OnClevyKeyboardConnected();
     void OnClevyKeyboardDisconnected();
 
+    bool IsKeyboardConnected() const { return m_bKeyboardConnected; }
+
 private:
     App* m_pApp;
     Config* m_pConfig;

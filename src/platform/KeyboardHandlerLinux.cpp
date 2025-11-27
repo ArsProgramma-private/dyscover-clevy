@@ -45,7 +45,7 @@ static constexpr KeyMapping s_keyMappings[] = {
     { Key::Nine, 0x0A }, { Key::Zero, 0x0B },
 };
 
-static int KeyCodeFromKey(Key key) {
+[[maybe_unused]] static int KeyCodeFromKey(Key key) {
     for (auto m : s_keyMappings) if (m.key == key) return m.code;
     return -1;
 }
@@ -102,6 +102,8 @@ public:
         if (key >= Key::A && key <= Key::Z) {
             char base = 'a' + static_cast<int>(key) - static_cast<int>(Key::A);
             if (mods.shift) base = static_cast<char>(::toupper(base));
+            // Basic AltGr support: AltGr+E -> €
+            if (mods.altGr && key == Key::E) return "€";
             return std::string(1, base);
         }
         
@@ -160,8 +162,9 @@ public:
     }
 
     bool sendKey(Key key, KeyEventType) override {
-        int code = KeyCodeFromKey(key);
-        return code != -1;
+        // Injection not implemented yet
+        (void)key;
+        return false;
     }
 
     void startInterception() override { /* noop for now: will require permissions */ }
