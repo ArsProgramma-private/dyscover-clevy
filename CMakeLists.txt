@@ -597,17 +597,70 @@ else()
     file(COPY res/Splash.bmp DESTINATION ${CMAKE_BINARY_DIR})
 endif()
 
-# Sounds
-file(GLOB SOUND_FILES "res/data/*.wav")
+# Language-Specific Resource Optimization (Feature 006)
+# Generate manifest of audio files required for the selected language
+include(cmake/ResourceManifest.cmake)
+
+set(RESOURCE_MANIFEST_FILE "${CMAKE_CURRENT_BINARY_DIR}/resource-manifest-${LANGUAGE}.txt")
+
+# Generate resource manifest by parsing Keys.cpp for the selected language
+generate_resource_manifest(
+  ${RESOURCE_MANIFEST_FILE}
+  ${LANGUAGE}
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/Keys.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/res/data"
+)
+
+# Read the manifest to get the list of required audio files
+read_resource_manifest(${RESOURCE_MANIFEST_FILE} SOUND_FILE_NAMES)
+
+# Build full paths for the audio files
+set(SOUND_FILES "")
+foreach(SOUND_FILE_NAME ${SOUND_FILE_NAMES})
+  list(APPEND SOUND_FILES "${CMAKE_CURRENT_SOURCE_DIR}/res/data/${SOUND_FILE_NAME}")
+endforeach()
+
+# Validate that all resources exist
+execute_process(
+  COMMAND ${CMAKE_COMMAND}
+    -DMANIFEST=${RESOURCE_MANIFEST_FILE}
+    -DRESOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/res/data
+    -DLANGUAGE=${LANGUAGE}
+    -DTTS_LANG=${TTS_LANG}
+    -DTTS_VOICE=${TTS_VOICE}
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-tools/validate-resources.cmake
+  RESULT_VARIABLE VALIDATION_RESULT
+  OUTPUT_VARIABLE VALIDATION_OUTPUT
+  ERROR_VARIABLE VALIDATION_ERROR
+)
+
+if(NOT VALIDATION_RESULT EQUAL 0)
+  message(FATAL_ERROR "Resource validation failed:\n${VALIDATION_OUTPUT}\n${VALIDATION_ERROR}")
+endif()
+
+# Display manifest statistics
 list(LENGTH SOUND_FILES SOUND_FILES_COUNT)
-message(STATUS "Found ${SOUND_FILES_COUNT} audio files: ${SOUND_FILES}")
+message(STATUS "Language-specific audio files for '${LANGUAGE}': ${SOUND_FILES_COUNT}")
+
+# Copy language-specific audio files to build directory
 add_custom_command(
     TARGET Dyscover POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:Dyscover>/audio
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SOUND_FILES} $<TARGET_FILE_DIR:Dyscover>/audio
-    COMMENT "Copying ${SOUND_FILES_COUNT} audio files to build directory"
-    VERBATIM
+    COMMENT "Creating audio directory in build output"
 )
+
+foreach(SOUND_FILE ${SOUND_FILES})
+  get_filename_component(SOUND_FILE_NAME ${SOUND_FILE} NAME)
+  add_custom_command(
+      TARGET Dyscover POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${SOUND_FILE}
+        $<TARGET_FILE_DIR:Dyscover>/audio/${SOUND_FILE_NAME}
+      COMMENT "Copying ${SOUND_FILE_NAME}"
+  )
+endforeach()
+
+message(STATUS "Audio files will be copied to build directory: ${SOUND_FILES_COUNT} files")
 
 # Installation
 install(TARGETS Dyscover RUNTIME DESTINATION . BUNDLE DESTINATION .)
