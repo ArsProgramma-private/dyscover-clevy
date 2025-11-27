@@ -17,7 +17,9 @@ option(PACKAGING_DEBUG_SYMBOLS "Install debug symbols with package (PDB/dSYM)" O
 # Feature flag for layout-based resource organization (Phase 2 migration)
 # OFF (default): Use legacy flat structure (src/Keys.cpp, res/data/)
 # ON: Use new hierarchical structure (res/layouts/*/*/)
-option(USE_LAYOUT_STRUCTURE "Use new layout-based resource organization" OFF)
+option(USE_LAYOUT_STRUCTURE "Use new layout-based resource organization" ON)
+message(STATUS "Using new layout-based resource structure")
+include(cmake/LayoutDiscovery.cmake)
 
 option(ENABLE_CXX20 "Allow building with C++20 (optional)" OFF)
 if(ENABLE_CXX20)
