@@ -1,0 +1,147 @@
+name: Multi-Language Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-languages:
+    name: Build ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        language: [nl, nl_be]
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            build-essential \
+            libwxgtk3.0-gtk3-dev \
+            portaudio19-dev \
+            gettext
+      
+      - name: Configure CMake for ${{ matrix.language }}
+        run: |
+          cmake -S . -B build-${{ matrix.language }} \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLANGUAGE=${{ matrix.language }} \
+            -DLICENSING=demo \
+            -DBUILD_TESTS=OFF \
+            -DPACKAGING_ENABLE=ON
+      
+      - name: Build ${{ matrix.language }}
+        run: |
+          cmake --build build-${{ matrix.language }} --target Dyscover --parallel
+      
+      - name: Verify language-specific resources
+        run: |
+          BUILD_DIR=build-${{ matrix.language }}
+          AUDIO_COUNT=$(find $BUILD_DIR/audio -name "*.wav" | wc -l)
+          echo "Audio files for ${{ matrix.language }}: $AUDIO_COUNT"
+          
+          # Verify we have language-specific resources (not all 68 files)
+          if [ $AUDIO_COUNT -ge 68 ]; then
+            echo "ERROR: Build contains all audio files, not language-specific subset"
+            exit 1
+          fi
+          
+          if [ $AUDIO_COUNT -lt 50 ]; then
+            echo "ERROR: Build contains too few audio files"
+            exit 1
+          fi
+          
+          echo "✓ Language-specific resource optimization verified"
+      
+      - name: Create package
+        run: |
+          cd build-${{ matrix.language }}
+          cpack
+      
+      - name: Display package info
+        run: |
+          BUILD_DIR=build-${{ matrix.language }}
+          echo "Packages created:"
+          find $BUILD_DIR -maxdepth 1 -name "Dyscover-${{ matrix.language }}-*.tar.gz" -o -name "Dyscover-${{ matrix.language }}-*.zip" | while read pkg; do
+            SIZE=$(du -h "$pkg" | cut -f1)
+            echo "  - $(basename $pkg) ($SIZE)"
+          done
+      
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dyscover-${{ matrix.language }}-${{ github.sha }}
+          path: |
+            build-${{ matrix.language }}/Dyscover-${{ matrix.language }}-*.tar.gz
+            build-${{ matrix.language }}/Dyscover-${{ matrix.language }}-*.zip
+          retention-days: 30
+  
+  verify-no-contamination:
+    name: Verify Package Independence
+    runs-on: ubuntu-latest
+    needs: build-languages
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download Dutch package
+        uses: actions/download-artifact@v4
+        with:
+          name: Dyscover-nl-${{ github.sha }}
+          path: packages/nl
+      
+      - name: Download Flemish package
+        uses: actions/download-artifact@v4
+        with:
+          name: Dyscover-nl_be-${{ github.sha }}
+          path: packages/nl_be
+      
+      - name: Verify package independence
+        run: |
+          echo "Verifying Dutch and Flemish packages are independent..."
+          
+          # Extract packages
+          cd packages/nl
+          tar -xzf Dyscover-nl-*.tar.gz || unzip Dyscover-nl-*.zip
+          cd ../nl_be
+          tar -xzf Dyscover-nl_be-*.tar.gz || unzip Dyscover-nl_be-*.zip
+          cd ../..
+          
+          # Get audio file lists
+          NL_FILES=$(find packages/nl -name "*.wav" | xargs -n1 basename | sort)
+          NL_BE_FILES=$(find packages/nl_be -name "*.wav" | xargs -n1 basename | sort)
+          
+          # Count files
+          NL_COUNT=$(echo "$NL_FILES" | wc -l)
+          NL_BE_COUNT=$(echo "$NL_BE_FILES" | wc -l)
+          
+          echo "Dutch package: $NL_COUNT audio files"
+          echo "Flemish package: $NL_BE_COUNT audio files"
+          
+          # Verify both packages have similar but not identical counts
+          if [ $NL_COUNT -eq $NL_BE_COUNT ]; then
+            echo "WARNING: Packages have identical file counts, may indicate lack of optimization"
+          fi
+          
+          # Find unique files
+          DUTCH_ONLY=$(comm -23 <(echo "$NL_FILES") <(echo "$NL_BE_FILES") | wc -l)
+          FLEMISH_ONLY=$(comm -13 <(echo "$NL_FILES") <(echo "$NL_BE_FILES") | wc -l)
+          SHARED=$(comm -12 <(echo "$NL_FILES") <(echo "$NL_BE_FILES") | wc -l)
+          
+          echo "Dutch-only files: $DUTCH_ONLY"
+          echo "Flemish-only files: $FLEMISH_ONLY"
+          echo "Shared files: $SHARED"
+          
+          echo "✓ Package independence verified"

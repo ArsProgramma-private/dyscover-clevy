@@ -74,14 +74,14 @@
 
 ### Implementation for User Story 2
 
-- [ ] T017 [P] [US2] Enhance `scripts/build-tools/validate-resources.cmake` to parse manifest and check existence of each file in `res/data/`
-- [ ] T018 [P] [US2] Add error accumulation to validation script: collect all missing files into list before generating error message
-- [ ] T019 [US2] Format comprehensive error message showing: "Missing audio files for language [LANGUAGE]: file1.wav, file2.wav, file3.wav referenced in layouts: [layout names]"
-- [ ] T020 [US2] Add validation for TTS resources: check that ${TTS_LANG}.db, ${TTS_LANG}.fsa, ${TTS_LANG}.fst, ${TTS_VOICE}.db, ${TTS_VOICE}.fon, ${TTS_VOICE}.udb exist in res/data/tts/data/
-- [ ] T021 [US2] Integrate validation into CMakeLists.txt as mandatory build step via `execute_process` during configuration phase
-- [ ] T022 [US2] Create test case: Rename a.wav to a_missing.wav, run cmake, verify build fails with error listing a.wav and which layouts reference it
-- [ ] T023 [US2] Create test case: Add non-existent "xyz.wav" to Keys.cpp g_dutchDefault, verify build fails with clear error
-- [ ] T024 [US2] Verify error timing: Ensure validation completes and reports within 10 seconds of build start
+- [X] T017 [P] [US2] Enhance `scripts/build-tools/validate-resources.cmake` to parse manifest and check existence of each file in `res/data/`
+- [X] T018 [P] [US2] Add error accumulation to validation script: collect all missing files into list before generating error message
+- [X] T019 [US2] Format comprehensive error message showing: "Missing audio files for language [LANGUAGE]: file1.wav, file2.wav, file3.wav referenced in layouts: [layout names]"
+- [X] T020 [US2] Add validation for TTS resources: check that ${TTS_LANG}.db, ${TTS_LANG}.fsa, ${TTS_LANG}.fst, ${TTS_VOICE}.db, ${TTS_VOICE}.fon, ${TTS_VOICE}.udb exist in res/data/tts/data/
+- [X] T021 [US2] Integrate validation into CMakeLists.txt as mandatory build step via `execute_process` during configuration phase
+- [X] T022 [US2] Create test case: Rename a.wav to a_missing.wav, run cmake, verify build fails with error listing a.wav and which layouts reference it
+- [X] T023 [US2] Create test case: Add non-existent "xyz.wav" to Keys.cpp g_dutchDefault, verify build fails with clear error
+- [X] T024 [US2] Verify error timing: Ensure validation completes and reports within 10 seconds of build start
 
 **Checkpoint**: Build validation catches all missing resources with comprehensive error reporting
 
@@ -95,15 +95,15 @@
 
 ### Implementation for User Story 3
 
-- [ ] T025 [P] [US3] Create multi-language build script `scripts/build-all-languages.sh` that iterates through supported languages (nl, nl_be)
-- [ ] T026 [P] [US3] Add language-specific build directory naming to script: build-nl/, build-nl_be/ to avoid conflicts
-- [ ] T027 [US3] Implement parallel build support in script using `cmake --build --parallel` for each language
-- [ ] T028 [US3] Add package naming logic to ensure distinct filenames: Dyscover-nl-${VERSION}-${PLATFORM}.zip, Dyscover-nl_be-${VERSION}-${PLATFORM}.zip
-- [ ] T029 [US3] Update build-windows.ps1 (line ~176) to support `-Language` parameter properly integrated with resource extraction
-- [ ] T030 [US3] Update scripts/quick-build-linux.sh to support language switching without CMake reconfiguration via pre-build extraction
-- [ ] T031 [US3] Test multi-language build: Run `scripts/build-all-languages.sh`, verify two distinct packages created
-- [ ] T032 [US3] Verify package independence: Unpack both packages, confirm Dutch package has zero Flemish files and vice versa
-- [ ] T033 [US3] Create CI/CD workflow example in `.github/workflows/multi-language-build.yml` demonstrating parallel language builds
+- [X] T025 [P] [US3] Create multi-language build script `scripts/build-all-languages.sh` that iterates through supported languages (nl, nl_be)
+- [X] T026 [P] [US3] Add language-specific build directory naming to script: build-nl/, build-nl_be/ to avoid conflicts
+- [X] T027 [US3] Implement parallel build support in script using `cmake --build --parallel` for each language
+- [X] T028 [US3] Add package naming logic to ensure distinct filenames: Dyscover-nl-${VERSION}-${PLATFORM}.zip, Dyscover-nl_be-${VERSION}-${PLATFORM}.zip
+- [X] T029 [US3] Update build-windows.ps1 (line ~176) to support `-Language` parameter properly integrated with resource extraction
+- [X] T030 [US3] Update scripts/quick-build-linux.sh to support language switching without CMake reconfiguration via pre-build extraction
+- [X] T031 [US3] Test multi-language build: Run `scripts/build-all-languages.sh`, verify two distinct packages created
+- [X] T032 [US3] Verify package independence: Unpack both packages, confirm Dutch package has zero Flemish files and vice versa
+- [X] T033 [US3] Create CI/CD workflow example in `.github/workflows/multi-language-build.yml` demonstrating parallel language builds
 
 **Checkpoint**: All languages can be built independently with proper isolation and naming
 
@@ -113,13 +113,13 @@
 
 **Purpose**: Documentation, testing, and final validation
 
-- [ ] T034 [P] Update CMakeLists.txt comments to explain resource extraction and manifest generation process
-- [ ] T035 [P] Add developer documentation in `specs/006-language-resource-optimization/developer-guide.md` explaining how to add new languages
-- [ ] T036 [P] Update README.md with new build process details and language-specific packaging information
-- [ ] T037 Create validation script `scripts/validate-resource-optimization.sh` that builds all languages and verifies package size reductions
-- [ ] T038 Run complete validation: Build all languages, verify SC-001 through SC-007 success criteria from spec.md
-- [ ] T039 Performance verification: Confirm resource extraction adds <5 seconds to build time
-- [ ] T040 Clean up any temporary debugging output from extraction scripts
+- [X] T034 [P] Update CMakeLists.txt comments to explain resource extraction and manifest generation process
+- [X] T035 [P] Add developer documentation in `specs/006-language-resource-optimization/developer-guide.md` explaining how to add new languages
+- [X] T036 [P] Update README.md with new build process details and language-specific packaging information
+- [X] T037 Create validation script `scripts/validate-resource-optimization.sh` that builds all languages and verifies package size reductions
+- [X] T038 Run complete validation: Build all languages, verify SC-001 through SC-007 success criteria from spec.md
+- [X] T039 Performance verification: Confirm resource extraction adds <5 seconds to build time
+- [X] T040 Clean up any temporary debugging output from extraction scripts
 
 ---
 
