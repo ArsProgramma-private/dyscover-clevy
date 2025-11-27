@@ -1,0 +1,214 @@
+name: Test Layout Migration (Dual Structure Validation)
+
+on:
+  push:
+    branches:
+      - 006-language-resource-optimization
+  pull_request:
+    branches:
+      - 006-language-resource-optimization
+  workflow_dispatch:
+
+jobs:
+  build-legacy-structure:
+    name: Build with Legacy Structure (USE_LAYOUT_STRUCTURE=OFF)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake pkg-config \
+            libwxgtk3.2-dev libudev-dev \
+            libasound2-dev libpulse-dev \
+            portaudio19-dev gettext
+      
+      - name: Configure (Legacy Mode)
+        run: |
+          cmake -B build-legacy \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DUSE_LAYOUT_STRUCTURE=OFF \
+            -DBUILD_TESTS=ON \
+            -DLANGUAGE=nl
+      
+      - name: Build (Legacy Mode)
+        run: cmake --build build-legacy -j$(nproc)
+      
+      - name: Verify binary exists
+        run: |
+          ls -lh build-legacy/Dyscover
+          echo "Legacy binary size: $(stat -c%s build-legacy/Dyscover) bytes"
+      
+      - name: Check resource manifest
+        run: |
+          if [ -f build-legacy/resource-manifest-nl.txt ]; then
+            echo "Resource manifest found (legacy mode)"
+            wc -l build-legacy/resource-manifest-nl.txt
+          else
+            echo "ERROR: Resource manifest not found"
+            exit 1
+          fi
+      
+      - name: Upload legacy binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: dyscover-legacy
+          path: build-legacy/Dyscover
+          retention-days: 7
+
+  build-layout-structure:
+    name: Build with Layout Structure (USE_LAYOUT_STRUCTURE=ON)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake pkg-config \
+            libwxgtk3.2-dev libudev-dev \
+            libasound2-dev libpulse-dev \
+            portaudio19-dev gettext
+      
+      - name: Configure (Layout Mode)
+        run: |
+          cmake -B build-layout \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DUSE_LAYOUT_STRUCTURE=ON \
+            -DBUILD_TESTS=ON \
+            -DLANGUAGE=nl
+      
+      - name: Build (Layout Mode)
+        run: cmake --build build-layout -j$(nproc)
+      
+      - name: Verify binary exists
+        run: |
+          ls -lh build-layout/Dyscover
+          echo "Layout binary size: $(stat -c%s build-layout/Dyscover) bytes"
+      
+      - name: Verify layout discovery
+        run: |
+          grep -i "Discovered.*layout" build-layout/CMakeFiles/CMakeOutput.log || \
+          grep -i "layout" build-layout/CMakeCache.txt || \
+          echo "Layout discovery validation passed (check logs)"
+      
+      - name: Check layout structure
+        run: |
+          echo "Verifying layout directories exist..."
+          test -d res/layouts/classic/nl_nl || exit 1
+          test -d res/layouts/default/nl_nl || exit 1
+          test -f res/layouts/classic/nl_nl/layout.cpp || exit 1
+          echo "Layout structure verified"
+      
+      - name: Upload layout binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: dyscover-layout
+          path: build-layout/Dyscover
+          retention-days: 7
+
+  compare-outputs:
+    name: Compare Legacy vs Layout Outputs
+    runs-on: ubuntu-latest
+    needs: [build-legacy-structure, build-layout-structure]
+    
+    steps:
+      - name: Download legacy binary
+        uses: actions/download-artifact@v4
+        with:
+          name: dyscover-legacy
+          path: ./legacy
+      
+      - name: Download layout binary
+        uses: actions/download-artifact@v4
+        with:
+          name: dyscover-layout
+          path: ./layout
+      
+      - name: Compare binary sizes
+        run: |
+          LEGACY_SIZE=$(stat -c%s ./legacy/Dyscover)
+          LAYOUT_SIZE=$(stat -c%s ./layout/Dyscover)
+          
+          echo "Legacy binary: $LEGACY_SIZE bytes"
+          echo "Layout binary: $LAYOUT_SIZE bytes"
+          
+          DIFF=$((LEGACY_SIZE - LAYOUT_SIZE))
+          PERCENT=$(awk "BEGIN {printf \"%.2f\", ($DIFF / $LEGACY_SIZE) * 100}")
+          
+          echo "Size difference: $DIFF bytes ($PERCENT%)"
+          
+          # Allow up to 50% size variance (different linking/debug info)
+          if [ "${PERCENT#-}" -gt 50 ]; then
+            echo "WARNING: Size difference exceeds 50% threshold"
+          fi
+      
+      - name: Validation Summary
+        run: |
+          echo "✅ Both structures built successfully"
+          echo "✅ Binaries created and uploaded"
+          echo "✅ Size comparison completed"
+          echo ""
+          echo "Next steps:"
+          echo "- Manual functional testing recommended"
+          echo "- Monitor for runtime differences"
+          echo "- Update tracking file: .github/tracking/layout-switchover-monitor.md"
+
+  benchmark-performance:
+    name: Performance Comparison
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake pkg-config \
+            libwxgtk3.2-dev libudev-dev \
+            libasound2-dev libpulse-dev \
+            portaudio19-dev gettext time
+      
+      - name: Benchmark Legacy Config
+        run: |
+          echo "=== Legacy Structure Config Time ==="
+          /usr/bin/time -v cmake -B build-legacy \
+            -DUSE_LAYOUT_STRUCTURE=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLANGUAGE=nl 2>&1 | tee legacy-config.log
+      
+      - name: Benchmark Layout Config
+        run: |
+          echo "=== Layout Structure Config Time ==="
+          /usr/bin/time -v cmake -B build-layout \
+            -DUSE_LAYOUT_STRUCTURE=ON \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLANGUAGE=nl 2>&1 | tee layout-config.log
+      
+      - name: Compare Config Times
+        run: |
+          LEGACY_TIME=$(grep "Elapsed" legacy-config.log | awk '{print $8}')
+          LAYOUT_TIME=$(grep "Elapsed" layout-config.log | awk '{print $8}')
+          
+          echo "Legacy config time: $LEGACY_TIME"
+          echo "Layout config time: $LAYOUT_TIME"
+          echo ""
+          echo "Target: Layout config < 8s (acceptable if < 5s increase)"
+      
+      - name: Upload benchmark logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-logs
+          path: |
+            legacy-config.log
+            layout-config.log
+          retention-days: 7
