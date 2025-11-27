@@ -217,10 +217,10 @@ Constitution Alignment:
 - [X] T084 [P] Create layout validation tool: scripts/validate-all-layouts.sh (Completed 2025-11-27)
 - [X] T085 [P] Performance optimization: Cache layout discovery results during CMake config (Completed 2025-11-27)
 - [X] T086 [P] Developer tooling: Add layout creation script scripts/create-new-layout.sh (Completed 2025-11-27)
-- [ ] T087 [P] Documentation: Create video walkthrough of adding a new language
-- [ ] T088 Code cleanup: Review and refactor LayoutRegistry for complexity <10
-- [ ] T089 Code cleanup: Review migration artifacts, ensure all temporary code removed
-- [ ] T090 Run validation suite from quickstart.md: verify all success criteria met
+- [ ] T087 [P] Documentation: Create video walkthrough of adding a new language (DEFERRED - requires external recording)
+- [X] T088 Code cleanup: Review and refactor LayoutRegistry for complexity <10 (Completed 2025-11-27 - already optimal)
+- [X] T089 Code cleanup: Review migration artifacts, ensure all temporary code removed (Completed 2025-11-27)
+- [X] T090 Run validation suite from quickstart.md: verify all success criteria met (Completed 2025-11-27 - all pass)
 
 ---
 

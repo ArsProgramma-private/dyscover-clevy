@@ -123,7 +123,6 @@ cmake --build build -j$(sysctl -n hw.ncpu)
 - `BUILD_TESTS=ON` — Enable unit tests (default: ON)
 - `BUILD_INTEGRATION_TESTS=ON` — Enable hardware-dependent integration tests (default: OFF)
 - `LANGUAGE=nl` — Set UI language (options: `nl`, `nl_be`)
-- `USE_LAYOUT_STRUCTURE=ON` — Enable hierarchical layout resource structure (default ON; set OFF for legacy flat manifest mode)
 - `LICENSING=demo` — Set licensing mode (options: `demo`, `full`, `none`)
 
 Example with options:
