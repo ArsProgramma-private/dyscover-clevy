@@ -315,12 +315,8 @@ if(WIN32)
       target_compile_definitions(Dyscover PRIVATE __NO_TTS__)
     endif()
 
-    # Copy data files
-    add_custom_command(
-        TARGET Dyscover POST_BUILD
-        COMMAND xcopy \"${CMAKE_SOURCE_DIR}/res/data/tts\" \"$<TARGET_FILE_DIR:Dyscover>/tts\" /s /y /i /d
-        COMMENT "Updating TTS data files ..."
-    )
+    # Note: TTS data files are now copied from layout directories via layout-based
+    # resource installation (see lines ~650+). The old res/data/tts structure no longer exists.
 else()
     if(BUILD_WITH_LIBRSTTS)
       # Try to find a prebuilt librstts binary shipped in the repo for this platform.
