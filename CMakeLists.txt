@@ -628,100 +628,101 @@ else()
 endif()
 
 # ============================================================================
-# Language-Specific Resource Optimization (Feature 006)
+# Layout-Based Resource Installation (Feature 006 Phase 2)
 # ============================================================================
-# This section implements language-specific resource filtering to reduce
-# package sizes by ~40%. Instead of copying all audio files, only files
-# referenced in keyboard layouts for the selected LANGUAGE are included.
+# Install layout resources from the hierarchical res/layouts/ structure.
+# Each layout directory contains layout.cpp, audio/, and tts/ subdirectories.
 #
-# Process:
-#   1. extract-audio-resources.cmake parses Keys.cpp for the selected language
-#   2. Generates a manifest file listing required audio files
-#   3. validate-resources.cmake verifies all files exist
-#   4. Only manifest files are copied to build/install directories
+# Installation process:
+#   1. Layout discovery finds all layouts matching LANGUAGE
+#   2. For each discovered layout, install its audio and TTS files
+#   3. Resources are organized by layout type and language
 #
-# Benefits:
-#   - Dutch (nl) package: ~62 files instead of 68 (40% reduction)
-#   - Flemish (nl_be) package: ~61 files instead of 68 (40% reduction)
-#   - Build-time validation prevents missing resource errors
-#
-# See: specs/006-language-resource-optimization/spec.md
+# See: specs/006-language-resource-optimization/
 # ============================================================================
 
-include(cmake/ResourceManifest.cmake)
+# Collect all audio and TTS files from discovered layouts
+set(ALL_AUDIO_FILES "")
+set(ALL_TTS_FILES "")
 
-set(RESOURCE_MANIFEST_FILE "${CMAKE_CURRENT_BINARY_DIR}/resource-manifest-${LANGUAGE}.txt")
-
-# Generate resource manifest by parsing Keys.cpp for the selected language
-generate_resource_manifest(
-  ${RESOURCE_MANIFEST_FILE}
-  ${LANGUAGE}
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/Keys.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/res/data"
-)
-
-# Read the manifest to get the list of required audio files
-read_resource_manifest(${RESOURCE_MANIFEST_FILE} SOUND_FILE_NAMES)
-
-# Build full paths for the audio files
-set(SOUND_FILES "")
-foreach(SOUND_FILE_NAME ${SOUND_FILE_NAMES})
-  list(APPEND SOUND_FILES "${CMAKE_CURRENT_SOURCE_DIR}/res/data/${SOUND_FILE_NAME}")
-endforeach()
-
-# Validate that all resources exist
-execute_process(
-  COMMAND ${CMAKE_COMMAND}
-    -DMANIFEST=${RESOURCE_MANIFEST_FILE}
-    -DRESOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/res/data
-    -DLANGUAGE=${LANGUAGE}
-    -DTTS_LANG=${TTS_LANG}
-    -DTTS_VOICE=${TTS_VOICE}
-    -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-tools/validate-resources.cmake
-  RESULT_VARIABLE VALIDATION_RESULT
-  OUTPUT_VARIABLE VALIDATION_OUTPUT
-  ERROR_VARIABLE VALIDATION_ERROR
-)
-
-if(NOT VALIDATION_RESULT EQUAL 0)
-  message(FATAL_ERROR "Resource validation failed:\n${VALIDATION_OUTPUT}\n${VALIDATION_ERROR}")
-endif()
-
-# Display manifest statistics
-list(LENGTH SOUND_FILES SOUND_FILES_COUNT)
-message(STATUS "Language-specific audio files for '${LANGUAGE}': ${SOUND_FILES_COUNT}")
-
-# Copy language-specific audio files to build directory
-add_custom_command(
+if(LAYOUT_SOURCES)
+  foreach(LAYOUT_FILE ${LAYOUT_SOURCES})
+    # Get layout directory from layout.cpp path
+    get_filename_component(LAYOUT_DIR "${LAYOUT_FILE}" DIRECTORY)
+    
+    # Collect audio files
+    file(GLOB LAYOUT_AUDIO_FILES "${LAYOUT_DIR}/audio/*.wav")
+    list(APPEND ALL_AUDIO_FILES ${LAYOUT_AUDIO_FILES})
+    
+    # Collect TTS files (all files in tts/ directory)
+    file(GLOB LAYOUT_TTS_FILES "${LAYOUT_DIR}/tts/*")
+    foreach(TTS_FILE ${LAYOUT_TTS_FILES})
+      if(NOT IS_DIRECTORY "${TTS_FILE}")
+        list(APPEND ALL_TTS_FILES ${TTS_FILE})
+      endif()
+    endforeach()
+  endforeach()
+  
+  # Remove duplicates (in case layouts share resources via symlinks)
+  list(REMOVE_DUPLICATES ALL_AUDIO_FILES)
+  list(REMOVE_DUPLICATES ALL_TTS_FILES)
+  
+  list(LENGTH ALL_AUDIO_FILES AUDIO_COUNT)
+  list(LENGTH ALL_TTS_FILES TTS_COUNT)
+  message(STATUS "Layout-based resources: ${AUDIO_COUNT} audio files, ${TTS_COUNT} TTS files")
+  
+  # Copy audio files to build directory
+  add_custom_command(
     TARGET Dyscover POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:Dyscover>/audio
     COMMENT "Creating audio directory in build output"
-)
-
-foreach(SOUND_FILE ${SOUND_FILES})
-  get_filename_component(SOUND_FILE_NAME ${SOUND_FILE} NAME)
-  add_custom_command(
+  )
+  
+  foreach(AUDIO_FILE ${ALL_AUDIO_FILES})
+    get_filename_component(AUDIO_NAME ${AUDIO_FILE} NAME)
+    add_custom_command(
       TARGET Dyscover POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${SOUND_FILE}
-        $<TARGET_FILE_DIR:Dyscover>/audio/${SOUND_FILE_NAME}
-      COMMENT "Copying ${SOUND_FILE_NAME}"
+        ${AUDIO_FILE}
+        $<TARGET_FILE_DIR:Dyscover>/audio/${AUDIO_NAME}
+      COMMENT "Copying ${AUDIO_NAME}"
+    )
+  endforeach()
+  
+  # Copy TTS files to build directory
+  add_custom_command(
+    TARGET Dyscover POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:Dyscover>/tts/data
+    COMMENT "Creating TTS directory in build output"
   )
-endforeach()
-
-message(STATUS "Audio files will be copied to build directory: ${SOUND_FILES_COUNT} files")
+  
+  foreach(TTS_FILE ${ALL_TTS_FILES})
+    get_filename_component(TTS_NAME ${TTS_FILE} NAME)
+    add_custom_command(
+      TARGET Dyscover POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${TTS_FILE}
+        $<TARGET_FILE_DIR:Dyscover>/tts/data/${TTS_NAME}
+      COMMENT "Copying TTS ${TTS_NAME}"
+    )
+  endforeach()
+else()
+  message(WARNING "No layouts discovered - no audio/TTS files will be installed")
+endif()
 
 # Installation
 install(TARGETS Dyscover RUNTIME DESTINATION . BUNDLE DESTINATION .)
-install(FILES ${LIBRSTTS_DLL_FILE} DESTINATION .)
-install(FILES ${SOUND_FILES} DESTINATION audio)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/res/data/tts/data/${TTS_LANG}.db DESTINATION tts/data/)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/res/data/tts/data/${TTS_LANG}.fsa DESTINATION tts/data/)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/res/data/tts/data/${TTS_LANG}.fst DESTINATION tts/data/)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/res/data/tts/data/${TTS_VOICE}.db DESTINATION tts/data/)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/res/data/tts/data/${TTS_VOICE}.fon DESTINATION tts/data/)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/res/data/tts/data/${TTS_VOICE}.opu DESTINATION tts/data/ OPTIONAL)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/res/data/tts/data/${TTS_VOICE}.udb DESTINATION tts/data/)
+if(WIN32)
+  install(FILES ${LIBRSTTS_DLL_FILE} DESTINATION .)
+endif()
+
+# Install layout resources
+if(ALL_AUDIO_FILES)
+  install(FILES ${ALL_AUDIO_FILES} DESTINATION audio)
+endif()
+if(ALL_TTS_FILES)
+  install(FILES ${ALL_TTS_FILES} DESTINATION tts/data)
+endif()
 
 # Decode platform name
 set(PLATFORM_NAME ${CMAKE_SYSTEM_NAME})
