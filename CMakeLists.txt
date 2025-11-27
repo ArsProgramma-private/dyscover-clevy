@@ -59,6 +59,7 @@ add_executable(Dyscover WIN32
   src/SupportedDevices.h
   src/Keyboard.cpp
   src/Keyboard.h
+  src/Keys.cpp
   src/Keys.h
   src/LicensingDemo.cpp
   src/LicensingDemo.h
