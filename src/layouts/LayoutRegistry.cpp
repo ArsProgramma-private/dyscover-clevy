@@ -60,24 +60,24 @@ const ILayoutProvider* LayoutRegistry::GetActiveLayout() const {
     // 3. Fallback to first registered layout
     
     #if defined(__LAYOUT_DUTCH_CLASSIC__)
-        return GetLayout("dutch_classic");
+        return GetLayout("dutchclassic");
     #elif defined(__LAYOUT_FLEMISH_CLASSIC__)
-        return GetLayout("flemish_classic");
+        return GetLayout("flemishclassic");
     #elif defined(__LAYOUT_DUTCH_KWEC__)
-        return GetLayout("dutch_kwec");
+        return GetLayout("dutchkwec");
     #elif defined(__LAYOUT_DUTCH_DEFAULT__)
-        return GetLayout("dutch_default");
+        return GetLayout("dutchdefault");
     #elif defined(__LAYOUT_FLEMISH_DEFAULT__)
-        return GetLayout("flemish_default");
+        return GetLayout("flemishdefault");
     #elif defined(__LANGUAGE_NL__)
         // Default to classic Dutch if no specific layout selected
-        const ILayoutProvider* layout = GetLayout("dutch_classic");
-        if (!layout) layout = GetLayout("dutch_default");
+        const ILayoutProvider* layout = GetLayout("dutchclassic");
+        if (!layout) layout = GetLayout("dutchdefault");
         return layout;
     #elif defined(__LANGUAGE_NL_BE__)
         // Default to classic Flemish if no specific layout selected
-        const ILayoutProvider* layout = GetLayout("flemish_classic");
-        if (!layout) layout = GetLayout("flemish_default");
+        const ILayoutProvider* layout = GetLayout("flemishclassic");
+        if (!layout) layout = GetLayout("flemishdefault");
         return layout;
     #else
         // Fallback: return first registered layout
