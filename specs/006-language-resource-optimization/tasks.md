@@ -197,7 +197,7 @@ Constitution Alignment:
 - [X] T073 Archive old structure: git mv src/Keys.cpp src/Keys.cpp.legacy
 - [X] T074 Archive old structure: git mv res/data res/data.legacy
 - [X] T075 Wait 1 week with archived structure (safety period for rollback) - SKIPPED per user request
-- [X] T076 Remove archived files: git rm src/Keys.cpp.legacy and res/data.legacy - DEFERRED to next commit
+- [X] T076 Remove archived files: git rm src/Keys.cpp.legacy and res/data.legacy (Completed 2025-11-27)
 - [X] T077 Remove feature flag: Delete USE_LAYOUT_STRUCTURE option from CMakeLists.txt
 - [X] T078 Simplify CMakeLists.txt: Remove old structure conditional logic
 - [X] T079 Remove migration script: git rm scripts/migration/migrate-to-layouts.sh (one-time use complete)
