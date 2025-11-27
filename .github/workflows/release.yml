@@ -143,7 +143,7 @@ jobs:
                 -DCMAKE_BUILD_TYPE=Release `
                 -DLANGUAGE=${{ matrix.language }} `
                 -DLICENSING=${{ matrix.licensing }} `
-                -DPACKAGING_ENABLE=ON `
+                -DPACKAGING_ENABLE=OFF `
                 -DPACKAGING_DEBUG_SYMBOLS=ON `
                 -DBUILD_TESTS=OFF
               $success = $true
@@ -217,7 +217,6 @@ jobs:
 
       - name: Create Inno Setup installer
         shell: powershell
-        continue-on-error: true
         run: |
           choco install innosetup -y
           $env:PATH += ";C:\Program Files (x86)\Inno Setup 6"
@@ -238,8 +237,8 @@ jobs:
         with:
           name: windows-${{ matrix.language }}-${{ matrix.licensing }}
           path: |
-            Dyscover-*.zip
             installer/*.exe
+            Dyscover-*.zip
             build/Release/symbols/
           if-no-files-found: warn
 

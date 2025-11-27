@@ -513,25 +513,63 @@ Packaging Extensions
 --------------------
 New packaging & audit assets have been added:
 
-- CPack toggle: enable/disable via `-DPACKAGING_ENABLE=ON|OFF` (default ON). Generators: WiX (Windows), DragNDrop DMG (macOS), TGZ/ZIP (all), DEB/RPM (Linux if tools present).
-- macOS bundle script: `./scripts/package-macos.sh` builds a `.app` + signed DMG (when `--sign` used). Optional universal binary with `--universal`.
+### Windows Installers (Recommended: Inno Setup)
+
+**Primary: Inno Setup** (default, recommended)
+- Template: `scripts/package-windows-inno.iss`
+- Build command: `iscc scripts/package-windows-inno.iss /DSourceDir=dist-windows-Release`
+- Output: `Dyscover-Setup-<version>.exe` (single-file installer)
+- Benefits: Simple, reliable, small overhead (~2-5MB), widely trusted for native apps
+
+**Alternative: WiX Toolset** (enterprise MSI requirements)
+- Enable via CMake: `-DPACKAGING_ENABLE=ON` (CPack generator)
+- Use when: IT departments require MSI for Group Policy deployment
+- Build via CPack after CMake build
+
+**Experimental: Squirrel** (auto-update scenarios)
+- Script: `pwsh ./scripts/package-windows-squirrel.ps1`
+- Requires: `dotnet tool install --global SquirrelCli`
+- Note: Designed for Electron/managed apps; native C++ support is uncommon. Validate thoroughly before production use.
+
+### macOS Packages
+
+- Bundle script: `./scripts/package-macos.sh` builds a `.app` + signed DMG (when `--sign` used). Optional universal binary with `--universal`.
 - Codesign helper: `./scripts/macos-codesign-example.sh <path/to/Dyscover.app> "Developer ID Application: Corp (TEAMID)"` performs deep signing.
-- Dependency audit (Linux/macOS): `./scripts/audit-deps.sh Dyscover build` lists dynamic libs & missing entries.
-- Dependency audit (Windows): `pwsh ./scripts/audit-deps.ps1 -Target Dyscover.exe -BuildDir build` (requires VS dev tools in PATH for `dumpbin`).
-- Windows Inno Setup template: `scripts/package-windows-inno.iss` (compile with `iscc`). Use `/DSourceDir=dist-windows-Release` pointing at staging folder produced by existing build scripts.
-- Windows Squirrel (experimental): `pwsh ./scripts/package-windows-squirrel.ps1` produces a NuGet-based update package (requires `dotnet tool install --global SquirrelCli`). Prefer WiX or Inno for stable native distribution.
 
-Recommended Flow:
-1. Build product artifacts (e.g. `pwsh ./scripts/build-windows.ps1 -Config Release -Package On -CopyDeps On`).
-2. Audit dependencies before packaging.
-3. Run chosen packager: WiX (default CPack), Inno (`iscc`), or Squirrel (experimental).
-4. macOS: create & sign DMG via `package-macos.sh --sign "Developer ID Application: ..."` then notarize externally.
+### Linux Packages
 
-Notes:
-- Squirrel.Windows is primarily designed for managed/Electron apps; native C++ usage is supported but less common. Treat its artifacts as experimental until validated.
-- Inno Setup template generates a lightweight installer; adjust icon, license path, and add registry entries as needed.
-- For Linux DEB/RPM output ensure `fakeroot`, `rpmbuild`, and requisite tooling are installed; otherwise CPack silently skips those generators.
+- CPack generators: DEB, RPM, TGZ (requires `fakeroot`, `rpmbuild` installed)
+- Enable via `-DPACKAGING_ENABLE=ON` (default)
+
+### Dependency Auditing
+
+- Linux/macOS: `./scripts/audit-deps.sh Dyscover build` lists dynamic libs & missing entries.
+- Windows: `pwsh ./scripts/audit-deps.ps1 -Target Dyscover.exe -BuildDir build` (requires VS dev tools in PATH for `dumpbin`).
+
+### Recommended Release Flow
+
+1. **Build product artifacts:**
+   ```powershell
+   pwsh ./scripts/build-windows.ps1 -Config Release -Package On -CopyDeps On
+   ```
+
+2. **Audit dependencies before packaging:**
+   ```powershell
+   pwsh ./scripts/audit-deps.ps1 -Target dist-windows-Release/Dyscover.exe -BuildDir build-windows-Release
+   ```
+
+3. **Create Inno Setup installer:**
+   ```powershell
+   iscc scripts/package-windows-inno.iss /DSourceDir=dist-windows-Release /DAppVersion=4.0.5.0
+   ```
+
+4. **macOS:** Create & sign DMG via `package-macos.sh --sign "Developer ID Application: ..."` then notarize externally.
+
+### Notes
+
 - Disable packaging during inner-loop development to speed CMake config: `cmake -S . -B build -DPACKAGING_ENABLE=OFF`.
+- Inno Setup installer template is pre-configured; customize icon, license path, and registry entries in `scripts/package-windows-inno.iss` as needed.
+- For WiX/MSI output, ensure WiX Toolset 3.x is installed and in PATH before running CPack.
 
 Release Hardening & Compliance
 ------------------------------
