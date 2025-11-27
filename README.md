@@ -498,11 +498,11 @@ Verification Checklist
 5. Resource locator returns platform-specific icon paths.
 6. Manifest embedded (Windows MSVC): extract using `mt.exe -inputresource:Dyscover.exe;#1 -out:manifest.xml`.
 
-Layout-Based Resource Structure (Feature 006 Phase 2)
-----------------------------------------------------
-The project now defaults to a hierarchical layout organization under `res/layouts/` replacing direct reliance on the monolithic `src/Keys.cpp` for resource packaging. Each layout module registers itself at runtime via `LayoutRegistry`.
+Layout-Based Resource Structure
+--------------------------------
+The project uses a hierarchical layout organization under `res/layouts/`. Each layout module registers itself at runtime via `LayoutRegistry`.
 
-Structure overview:
+Structure:
 ```
 res/layouts/
    classic/
@@ -515,21 +515,11 @@ res/layouts/
       nl_nl/
 ```
 
-Switching modes:
-```bash
-# Default (layout mode)
-cmake -B build .
-# Legacy flat resource mode
-cmake -B build-legacy -DUSE_LAYOUT_STRUCTURE=OFF .
-```
-
 Adding a new layout:
 1. Create directory: `res/layouts/<type>/<lang>/`
-2. Add `layout.cpp` implementing `ILayoutProvider` and static registration.
-3. Place audio files in `audio/`, TTS data in `tts/`.
-4. Reconfigure CMake – discovery is automatic.
-
-Rollback strategy: Set `USE_LAYOUT_STRUCTURE=OFF` if a regression is detected; both paths are continuously buildable until final cleanup phase.
+2. Add `layout.cpp` implementing `ILayoutProvider` and static registration
+3. Place audio files in `audio/`, TTS data in `tts/`
+4. Reconfigure CMake – discovery is automatic
 
 Troubleshooting Quick Reference
 -------------------------------

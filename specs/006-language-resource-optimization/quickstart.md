@@ -1,31 +1,25 @@
-# Quickstart: Layout-Based Resource Organization (Post-Switchover)
+# Quickstart: Layout-Based Resource Organization
 
-**Feature**: 006-language-resource-optimization (Phase 2 enhancement)  
-**Date**: 2025-11-27  
-**Audience**: Developers working with the default hierarchical layout structure
+**Feature**: 006-language-resource-optimization (Phase 2 complete)  
+**Date**: November 27, 2025  
+**Audience**: Developers working with the hierarchical layout structure
 
 ## Current State
 
-The layout-based resource organization is now the default (Phase 2 complete). The legacy flat structure & manifest path remain available via `-DUSE_LAYOUT_STRUCTURE=OFF` for rollback and comparison. This document focuses on daily usage; historical migration steps are preserved below for reference.
+The project uses a hierarchical layout-based resource organization under `res/layouts/`. Each layout is a self-contained module with its own layout definition, audio files, and TTS data.
 
 ## Daily Usage
 
-### Configure (Default Layout Mode)
+### Build
 ```bash
 cmake -B build -DLANGUAGE=nl_nl .
 cmake --build build
 ```
 
-### Legacy Mode (Fallback / Comparison)
-```bash
-cmake -B build-legacy -DLANGUAGE=nl_nl -DUSE_LAYOUT_STRUCTURE=OFF .
-cmake --build build-legacy
-```
-
 ### Verifying Layout Discovery
 ```bash
 cmake -B build -DLANGUAGE=nl_nl .
-grep -i "Discovered" build/CMakeFiles/CMakeOutput.log || true
+# Check CMake output for "Discovered N layouts for language: nl_nl"
 ```
 
 ### Adding a New Layout
@@ -34,28 +28,13 @@ mkdir -p res/layouts/modern/nl_nl/audio
 mkdir -p res/layouts/modern/nl_nl/tts
 vi res/layouts/modern/nl_nl/layout.cpp
 ```
-Implement `ILayoutProvider`, static registration, place referenced audio in `audio/`, TTS voice/language data in `tts/`, then reconfigure.
+Implement `ILayoutProvider`, add static registration, place referenced audio in `audio/`, TTS data in `tts/`, then reconfigure.
 
 ### Switching Languages
 ```bash
 cmake -B build-nl -DLANGUAGE=nl_nl .
 cmake -B build-nl_be -DLANGUAGE=nl_be .
 ```
-
-### Quick Equivalence Check
-```bash
-diff <(./build/Dyscover --test-layout) <(./build-legacy/Dyscover --test-layout) || echo "Differences (expected if new layouts diverge)"
-```
-
-### Rollback
-If an issue appears post‑switchover:
-```bash
-cmake -B build-rollback -DUSE_LAYOUT_STRUCTURE=OFF .
-```
-
-## Monitoring & Tracking
-
-During the switchover monitoring window CI should build both modes (see `.github/workflows/test-migration.yml`). Failures in either path trigger investigation before proceeding to Phase 3 cleanup.
 
 ## Historical Migration Steps (Reference Only)
 

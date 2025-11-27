@@ -1,21 +1,14 @@
 # Developer Guide: Language-Specific & Layout-Based Resources
 
-**Feature**: 006-language-resource-optimization (Phase 2 enhancement complete)  
-**Status**: Layout structure DEFAULT (legacy manifest mode still available)  
+**Feature**: 006-language-resource-optimization (Phase 2 complete)  
+**Status**: Layout structure (legacy structure removed)  
 **Last Updated**: November 27, 2025
 
 ## Overview
 
-The original optimization (Phase 1) reduced package size by copying only language‑specific audio & TTS resources discovered from `Keys.cpp`. Phase 2 adds a hierarchical, layout‑based resource organization under `res/layouts/` and makes it the default build path (`USE_LAYOUT_STRUCTURE=ON`). The legacy flat manifest mode remains available via `-DUSE_LAYOUT_STRUCTURE=OFF` for rollback and comparison.
+The project uses a hierarchical, layout-based resource organization under `res/layouts/`. Each layout is a modular unit containing its own layout definition, audio files, and TTS data.
 
-## Modes
-
-| Mode | Flag | Source of layout data | Resource location | Use Case |
-|------|------|-----------------------|-------------------|----------|
-| Layout Structure (default) | `USE_LAYOUT_STRUCTURE=ON` | Modular `res/layouts/*/*/layout.cpp` providers | Per layout `audio/` + `tts/` subdirs | Normal development & new languages |
-| Legacy Manifest | `USE_LAYOUT_STRUCTURE=OFF` | Monolithic `src/Keys.cpp` | Flat `res/data/` + `res/data/tts/data/` | Verification / rollback |
-
-## File Structure (Default Layout Mode)
+## File Structure
 
 ```
 res/
@@ -36,19 +29,14 @@ res/
 Supporting build logic:
 ```
 cmake/LayoutDiscovery.cmake      # discover_layouts(), validate_layout_structure()
-scripts/migration/migrate-to-layouts.sh  # one-time migration (retained for audit)
 src/layouts/LayoutRegistry.*     # runtime registration & lookup
 ```
 
-## How Discovery Works (Layout Mode)
-1. During CMake configure, `discover_layouts()` scans `res/layouts/*/*/<LANGUAGE>/layout.cpp`.
-2. Each file is validated (layout.cpp present, audio/ & tts/ directories exist).
-3. Valid sources are added to the target; each layout module registers itself in `LayoutRegistry` via a static block.
-4. Runtime selection uses compile‑time `LANGUAGE` to choose the active layout set.
-
-## Legacy Manifest Path (Optional)
-If you configure with `-DUSE_LAYOUT_STRUCTURE=OFF` the previous behavior is used:
-1. Parse `src/Keys.cpp` for the active language block.
+## How Discovery Works
+1. During CMake configure, `discover_layouts()` scans `res/layouts/*/*/<LANGUAGE>/layout.cpp`
+2. Each file is validated (layout.cpp present, audio/ & tts/ directories exist)
+3. Valid sources are added to the target; each layout module registers itself in `LayoutRegistry` via a static block
+4. Runtime selection uses compile-time `LANGUAGE` to choose the active layout set
 2. Extract audio references → manifest file.
 3. Validate existence in `res/data/`.
 4. Package only manifest & relevant TTS files.
@@ -95,13 +83,11 @@ static bool s_reg = [](){ Dyscover::LayoutRegistry::Instance().Register("dutch_a
 
 ## Switching Modes
 ```bash
-# Default (layout structure ON)
 cmake -B build .
-# Legacy manifest only
-cmake -B build-legacy -DUSE_LAYOUT_STRUCTURE=OFF .
+cmake --build build
 ```
 
-## Validation (Layout Mode)
+## Validation
 ```bash
 cmake -B build -DLANGUAGE=nl_nl .
 cmake --build build
@@ -110,11 +96,11 @@ cmake --build build
 Check compile warnings in generated layout modules (expected if some initializer fields are intentionally omitted). Ensure registration count matches expected number of layouts.
 
 ## Performance Notes
-| Stage | Legacy | Layout Mode | Delta |
-|-------|--------|-------------|-------|
-| Configure | ~2.3s | ~2.3–2.6s | +≤0.3s |
-| Build (clean) | baseline | +<10% | Within target |
-| Incremental | unchanged | unchanged | — |
+| Stage | Time | Notes |
+|-------|------|-------|
+| Configure | ~2.3–2.6s | Layout discovery overhead minimal |
+| Build (clean) | Baseline + <10% | Within target thresholds |
+| Incremental | Unchanged | Fast rebuilds maintained |
 
 ## Troubleshooting
 | Symptom | Likely Cause | Action |
@@ -122,19 +108,14 @@ Check compile warnings in generated layout modules (expected if some initializer
 | Layout not discovered | Directory depth wrong or language code mismatch | Verify path: `res/layouts/<type>/<lang>/layout.cpp` |
 | Runtime missing layout | Registration static block omitted | Add static instance + lambda registration |
 | Duplicate audio copies | Shared file placed in multiple layout/audio dirs | Consider shared parent + symlink (future enhancement) |
-| Rollback needed | Unexpected regression post‑switchover | Reconfigure with `-DUSE_LAYOUT_STRUCTURE=OFF` |
 
 ## Key Files
 | File | Purpose |
 |------|---------|
 | `cmake/LayoutDiscovery.cmake` | Discovery & validation functions |
 | `src/layouts/LayoutRegistry.*` | Central registry / active layout selection |
-| `scripts/migration/migrate-to-layouts.sh` | One‑time migration (audit trail) |
 | `res/layouts/*/*/layout.cpp` | Individual layout providers |
-| `CMakeLists.txt` | Feature flag & language selection |
-
-## Future (Phase 3 Cleanup Planned)
-Remove legacy manifest path & `src/Keys.cpp` once stable monitoring (Phase 7) completes and rollback risk is minimal.
+| `CMakeLists.txt` | Language selection & build configuration |
 
 ## Accessibility & Inclusive Design
 Layout modules should preserve consistent naming and avoid ambiguous labels. Review added audio file names for clarity (avoid cryptic codes).  
