@@ -4,6 +4,7 @@
 
 #include "Keys.h"
 #include "layouts/LayoutRegistry.h"
+#include "layouts/LayoutLoader.h"
 #include <vector>
 
 // Type definitions for layout entries (same as in layout files)
@@ -23,17 +24,6 @@ struct KeyTranslationEntry {
     bool speak_sentence = false;
     CapsLock capsLock = CapsLock::Ignore;
 };
-
-// Forward declaration for layout provider interface
-namespace Dyscover {
-    class ILayoutProvider {
-    public:
-        virtual ~ILayoutProvider() = default;
-        virtual const std::vector<KeyTranslationEntry>& GetEntries() const = 0;
-        virtual const char* GetName() const = 0;
-        virtual const char* GetLanguage() const = 0;
-    };
-}
 
 // Helper function to find translation in layout entries
 static KeyTranslation FindTranslation(const std::vector<KeyTranslationEntry>& entries, Key key, bool caps, bool shift, bool ctrl, bool alt)
