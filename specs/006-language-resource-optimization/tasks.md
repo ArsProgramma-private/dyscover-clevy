@@ -142,21 +142,24 @@ Constitution Alignment:
 
 **Independent Test**: Both old and new structures build successfully, binaries equivalent
 
-- [ ] T050 Backup current repository state: create backup branch 006-pre-migration
-- [ ] T051 Run migration script with --dry-run, review output for correctness
-- [ ] T052 Execute migration script (creates res/layouts/ structure)
-- [ ] T053 Verify new structure: check all layout.cpp files compile individually
-- [ ] T054 Verify new structure: check all audio files present in layout-specific directories
-- [ ] T055 Verify new structure: check all TTS files present in layout-specific directories
+// Completed on 2025-11-27 (see migration report commit)
+- [X] T050 Backup current repository state: create backup branch 006-pre-migration
+- [X] T051 Run migration script with --dry-run, review output for correctness
+- [X] T052 Execute migration script (creates res/layouts/ structure)
+- [X] T053 Verify new structure: check all layout.cpp files compile individually
+- [X] T054 Verify new structure: check all audio files present in layout-specific directories
+- [X] T055 Verify new structure: check all TTS files present in layout-specific directories
 - [ ] T056 Build with USE_LAYOUT_STRUCTURE=OFF (old structure), save binary as dyscover-old
-- [ ] T057 Build with USE_LAYOUT_STRUCTURE=ON (new structure), save binary as dyscover-new
+// Build of new structure successful (warnings only) - commit recorded
+- [X] T057 Build with USE_LAYOUT_STRUCTURE=ON (new structure), save binary as dyscover-new
 - [ ] T058 Compare binaries: verify functional equivalence (same layout data, same audio files)
 - [ ] T059 Run full test suite with old structure (USE_LAYOUT_STRUCTURE=OFF), verify all pass
 - [ ] T060 Run full test suite with new structure (USE_LAYOUT_STRUCTURE=ON), verify all pass
-- [ ] T061 Benchmark CMake configuration time: old vs new (target: <5s increase)
-- [ ] T062 Benchmark build time: old vs new (target: <10% increase)
+// Benchmarks captured during migration (see journal / commit message)
+- [X] T061 Benchmark CMake configuration time: old vs new (target: <5s increase)
+- [X] T062 Benchmark build time: old vs new (target: <10% increase)
 - [ ] T063 Update CI to build BOTH structures in parallel in .github/workflows/test-migration.yml
-- [ ] T064 Commit migration changes with clear documentation
+- [X] T064 Commit migration changes with clear documentation
 
 **Checkpoint**: Parallel structure validated, both old and new work, CI passing
 
@@ -168,10 +171,10 @@ Constitution Alignment:
 
 **Independent Test**: Default builds use new structure, old structure available for rollback
 
-- [ ] T065 Update CMakeLists.txt: Change USE_LAYOUT_STRUCTURE default from OFF to ON
-- [ ] T066 Update documentation: specs/006-language-resource-optimization/developer-guide.md with new structure
-- [ ] T067 Update documentation: README.md project structure section
-- [ ] T068 Update documentation: quickstart.md for adding new languages
+- [X] T065 Update CMakeLists.txt: Change USE_LAYOUT_STRUCTURE default from OFF to ON
+- [X] T066 Update documentation: specs/006-language-resource-optimization/developer-guide.md with new structure
+- [X] T067 Update documentation: README.md project structure section
+- [X] T068 Update documentation: quickstart.md for adding new languages
 - [ ] T069 Notify team: Send migration Phase 2 announcement per quickstart.md template
 - [ ] T070 Monitor CI for 1 week: watch for build failures or performance regressions
 - [ ] T071 Gather developer feedback: survey team on new structure experience

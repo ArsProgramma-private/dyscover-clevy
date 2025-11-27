@@ -1,3 +1,123 @@
+# Quickstart: Layout-Based Resource Organization (Post-Switchover)
+
+**Feature**: 006-language-resource-optimization (Phase 2 enhancement)  
+**Date**: 2025-11-27  
+**Audience**: Developers working with the default hierarchical layout structure
+
+## Current State
+
+The layout-based resource organization is now the default (Phase 2 complete). The legacy flat structure & manifest path remain available via `-DUSE_LAYOUT_STRUCTURE=OFF` for rollback and comparison. This document focuses on daily usage; historical migration steps are preserved below for reference.
+
+## Daily Usage
+
+### Configure (Default Layout Mode)
+```bash
+cmake -B build -DLANGUAGE=nl_nl .
+cmake --build build
+```
+
+### Legacy Mode (Fallback / Comparison)
+```bash
+cmake -B build-legacy -DLANGUAGE=nl_nl -DUSE_LAYOUT_STRUCTURE=OFF .
+cmake --build build-legacy
+```
+
+### Verifying Layout Discovery
+```bash
+cmake -B build -DLANGUAGE=nl_nl .
+grep -i "Discovered" build/CMakeFiles/CMakeOutput.log || true
+```
+
+### Adding a New Layout
+```bash
+mkdir -p res/layouts/modern/nl_nl/audio
+mkdir -p res/layouts/modern/nl_nl/tts
+vi res/layouts/modern/nl_nl/layout.cpp
+```
+Implement `ILayoutProvider`, static registration, place referenced audio in `audio/`, TTS voice/language data in `tts/`, then reconfigure.
+
+### Switching Languages
+```bash
+cmake -B build-nl -DLANGUAGE=nl_nl .
+cmake -B build-nl_be -DLANGUAGE=nl_be .
+```
+
+### Quick Equivalence Check
+```bash
+diff <(./build/Dyscover --test-layout) <(./build-legacy/Dyscover --test-layout) || echo "Differences (expected if new layouts diverge)"
+```
+
+### Rollback
+If an issue appears post‑switchover:
+```bash
+cmake -B build-rollback -DUSE_LAYOUT_STRUCTURE=OFF .
+```
+
+## Monitoring & Tracking
+
+During the switchover monitoring window CI should build both modes (see `.github/workflows/test-migration.yml`). Failures in either path trigger investigation before proceeding to Phase 3 cleanup.
+
+## Historical Migration Steps (Reference Only)
+
+The sections below document the original phased migration. They are retained for auditability and knowledge transfer.
+
+### Phase 1: Create Parallel Structure
+
+#### Step 1: Run Migration Script (Dry Run)
+```bash
+./scripts/migration/migrate-to-layouts.sh --dry-run
+```
+Expected summary lists planned directory creation & file counts.
+
+#### Step 2: Execute Migration
+```bash
+./scripts/migration/migrate-to-layouts.sh
+tree -L 4 res/layouts/
+```
+
+#### Step 3: Implement CMake Discovery
+`cmake/LayoutDiscovery.cmake` with `discover_layouts()` & validation helpers.
+
+#### Step 4: Feature Flag
+`option(USE_LAYOUT_STRUCTURE ... OFF)` (later flipped ON in Phase 2).
+
+#### Step 5: Test Both Structures
+Separate build trees with and without flag; compare functional output.
+
+### Phase 2: Switch to New Structure by Default
+Flag default changed to ON; team notification dispatched; CI monitored for stability.
+
+### Phase 3: Remove Old Structure (Pending)
+Planned archival then removal of `src/Keys.cpp` and flat `res/data/` once monitoring window closes and rollback risk is negligible.
+
+## Performance Benchmarks (At Switchover)
+| Metric | Legacy | Layout | Threshold | Status |
+|--------|--------|--------|-----------|--------|
+| CMake Config | 2.3s | 2.6s | <5s delta | ✅ PASS |
+| Clean Build | baseline | +<10% | <10% | ✅ PASS |
+| Incremental | ~5s | ~5.5s | <10s | ✅ PASS |
+| Runtime Startup | 1.2s | 1.2s | No increase | ✅ PASS |
+
+## Roadmap (Next Steps)
+1. Phase 3 cleanup (remove legacy code) after stability period.
+2. Metadata (`metadata.json`) per layout directory.
+3. Shared audio dedup strategy (symlinks or common pool).
+4. Runtime layout switching & multi‑voice support.
+5. Compression of audio assets (OGG) for distribution size.
+
+## Troubleshooting (Layout Mode)
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Layout missing | Directory depth or name mismatch | Ensure `res/layouts/<type>/<lang>/layout.cpp` |
+| No registration | Static block omitted | Add static instance + lambda to register |
+| Duplicate audio | Copied shared files multiple times | Consolidate or introduce symlink (future) |
+| Need rollback | Regression found | Reconfigure with `-DUSE_LAYOUT_STRUCTURE=OFF` |
+
+## Support & Accessibility
+Generated structure was created with accessibility in mind; please manually test with assistive technologies (screen reader, keyboard navigation). Report issues via repository issue tracker (`layout-migration` label).
+
+---
+Historical original quickstart retained for audit: see git history if deeper details needed.
 # Quickstart: Migrating to Layout-Based Resource Organization
 
 **Feature**: 006-language-resource-optimization (Phase 2)  

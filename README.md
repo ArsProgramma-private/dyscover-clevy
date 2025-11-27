@@ -123,6 +123,7 @@ cmake --build build -j$(sysctl -n hw.ncpu)
 - `BUILD_TESTS=ON` — Enable unit tests (default: ON)
 - `BUILD_INTEGRATION_TESTS=ON` — Enable hardware-dependent integration tests (default: OFF)
 - `LANGUAGE=nl` — Set UI language (options: `nl`, `nl_be`)
+- `USE_LAYOUT_STRUCTURE=ON` — Enable hierarchical layout resource structure (default ON; set OFF for legacy flat manifest mode)
 - `LICENSING=demo` — Set licensing mode (options: `demo`, `full`, `none`)
 
 Example with options:
@@ -496,6 +497,39 @@ Verification Checklist
 4. Audio controller selects backend (or reports unsupported gracefully).
 5. Resource locator returns platform-specific icon paths.
 6. Manifest embedded (Windows MSVC): extract using `mt.exe -inputresource:Dyscover.exe;#1 -out:manifest.xml`.
+
+Layout-Based Resource Structure (Feature 006 Phase 2)
+----------------------------------------------------
+The project now defaults to a hierarchical layout organization under `res/layouts/` replacing direct reliance on the monolithic `src/Keys.cpp` for resource packaging. Each layout module registers itself at runtime via `LayoutRegistry`.
+
+Structure overview:
+```
+res/layouts/
+   classic/
+      nl_nl/ (layout.cpp, audio/, tts/)
+      nl_be/
+   default/
+      nl_nl/
+      nl_be/
+   kwec/
+      nl_nl/
+```
+
+Switching modes:
+```bash
+# Default (layout mode)
+cmake -B build .
+# Legacy flat resource mode
+cmake -B build-legacy -DUSE_LAYOUT_STRUCTURE=OFF .
+```
+
+Adding a new layout:
+1. Create directory: `res/layouts/<type>/<lang>/`
+2. Add `layout.cpp` implementing `ILayoutProvider` and static registration.
+3. Place audio files in `audio/`, TTS data in `tts/`.
+4. Reconfigure CMake – discovery is automatic.
+
+Rollback strategy: Set `USE_LAYOUT_STRUCTURE=OFF` if a regression is detected; both paths are continuously buildable until final cleanup phase.
 
 Troubleshooting Quick Reference
 -------------------------------

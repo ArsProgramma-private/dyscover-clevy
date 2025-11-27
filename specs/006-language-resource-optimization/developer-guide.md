@@ -1,310 +1,144 @@
-# Developer Guide: Language-Specific Resource Optimization
+# Developer Guide: Language-Specific & Layout-Based Resources
 
-**Feature**: 006-language-resource-optimization  
-**Status**: Implemented  
+**Feature**: 006-language-resource-optimization (Phase 2 enhancement complete)  
+**Status**: Layout structure DEFAULT (legacy manifest mode still available)  
 **Last Updated**: November 27, 2025
 
 ## Overview
 
-This feature optimizes build packages by including only language-specific audio and TTS resources, reducing package sizes by approximately 40%.
+The original optimization (Phase 1) reduced package size by copying only language‑specific audio & TTS resources discovered from `Keys.cpp`. Phase 2 adds a hierarchical, layout‑based resource organization under `res/layouts/` and makes it the default build path (`USE_LAYOUT_STRUCTURE=ON`). The legacy flat manifest mode remains available via `-DUSE_LAYOUT_STRUCTURE=OFF` for rollback and comparison.
 
-## How It Works
+## Modes
 
-### 1. Resource Extraction
+| Mode | Flag | Source of layout data | Resource location | Use Case |
+|------|------|-----------------------|-------------------|----------|
+| Layout Structure (default) | `USE_LAYOUT_STRUCTURE=ON` | Modular `res/layouts/*/*/layout.cpp` providers | Per layout `audio/` + `tts/` subdirs | Normal development & new languages |
+| Legacy Manifest | `USE_LAYOUT_STRUCTURE=OFF` | Monolithic `src/Keys.cpp` | Flat `res/data/` + `res/data/tts/data/` | Verification / rollback |
 
-When you configure CMake with a specific `LANGUAGE` (e.g., `nl` or `nl_be`), the build system:
-
-1. Parses `src/Keys.cpp` to find all keyboard layout definitions for that language
-2. Extracts audio filenames from `KeyTranslationEntry::sound` fields
-3. Generates a manifest file (`resource-manifest-{LANGUAGE}.txt`)
-4. Validates that all referenced files exist in `res/data/`
-
-### 2. Build Process
-
-- **Configuration Time**: Resource extraction and validation happen during `cmake` configuration
-- **Build Time**: Only manifest files are copied to the `audio/` directory
-- **Install Time**: Only manifest files are included in the package
-
-### 3. File Structure
+## File Structure (Default Layout Mode)
 
 ```
-dyscover-clevy/
-├── cmake/
-│   └── ResourceManifest.cmake           # CMake module for manifest generation
-├── scripts/
-│   ├── build-tools/
-│   │   ├── extract-audio-resources.cmake   # Parses Keys.cpp, extracts requirements
-│   │   └── validate-resources.cmake         # Validates file existence
-│   ├── build-all-languages.sh           # Builds all languages
-│   └── validate-resource-optimization.sh # Tests success criteria
-├── src/
-│   └── Keys.cpp                         # Keyboard layouts (parsed at build time)
-└── res/data/
-    ├── *.wav                            # Audio files
-    └── tts/data/                        # TTS files
+res/
+└── layouts/
+    ├── classic/
+    │   ├── nl_nl/
+    │   │   ├── layout.cpp
+    │   │   ├── audio/ (*.wav referenced by layout)
+    │   │   └── tts/ (voice + language TTS data)
+    │   └── nl_be/
+    ├── default/
+    │   ├── nl_nl/
+    │   └── nl_be/
+    └── kwec/
+        └── nl_nl/
 ```
 
-## Adding a New Language
+Supporting build logic:
+```
+cmake/LayoutDiscovery.cmake      # discover_layouts(), validate_layout_structure()
+scripts/migration/migrate-to-layouts.sh  # one-time migration (retained for audit)
+src/layouts/LayoutRegistry.*     # runtime registration & lookup
+```
 
-To add support for a new language (e.g., `en` for English):
+## How Discovery Works (Layout Mode)
+1. During CMake configure, `discover_layouts()` scans `res/layouts/*/*/<LANGUAGE>/layout.cpp`.
+2. Each file is validated (layout.cpp present, audio/ & tts/ directories exist).
+3. Valid sources are added to the target; each layout module registers itself in `LayoutRegistry` via a static block.
+4. Runtime selection uses compile‑time `LANGUAGE` to choose the active layout set.
 
-### Step 1: Add Language to Keys.cpp
+## Legacy Manifest Path (Optional)
+If you configure with `-DUSE_LAYOUT_STRUCTURE=OFF` the previous behavior is used:
+1. Parse `src/Keys.cpp` for the active language block.
+2. Extract audio references → manifest file.
+3. Validate existence in `res/data/`.
+4. Package only manifest & relevant TTS files.
 
+## Adding a New Layout (Default Mode)
+
+1. Create directories (example: new layout type `accessible` for Dutch):
+```bash
+mkdir -p res/layouts/accessible/nl_nl/audio
+mkdir -p res/layouts/accessible/nl_nl/tts
+```
+2. Add `layout.cpp`:
 ```cpp
-// In src/Keys.cpp
-#elif defined __LANGUAGE_EN__
-static const std::vector<KeyTranslationEntry> g_englishDefault = {
-    { Key::A, false, false, false, { { Key::A } }, "a.wav" },
-    { Key::B, false, false, false, { { Key::B } }, "b.wav" },
-    // ... more entries
+// res/layouts/accessible/nl_nl/layout.cpp
+#include "LayoutLoader.h"
+namespace {
+class DutchAccessibleLayout : public Dyscover::ILayoutProvider {
+public:
+    const std::vector<KeyTranslationEntry>& GetEntries() const override { return g_entries; }
+    const char* GetName() const override { return "dutch_accessible"; }
+    const char* GetLanguage() const override { return "nl_nl"; }
+private:
+    static const std::vector<KeyTranslationEntry> g_entries;
 };
+const std::vector<KeyTranslationEntry> DutchAccessibleLayout::g_entries = {
+    { Key::A, false, false, false, { { Key::A } }, "a.wav" },
+    // ...
+};
+static DutchAccessibleLayout s_layout;
+static bool s_reg = [](){ Dyscover::LayoutRegistry::Instance().Register("dutch_accessible", &s_layout); return true; }();
+} // namespace
 ```
+3. Place referenced audio files under `audio/` and TTS data under `tts/`.
+4. Reconfigure CMake: it auto‑discovers the new layout.
 
-### Step 2: Update CMakeLists.txt
+## Adding a New Language (Both Modes)
 
-```cmake
-# Around line 350 in CMakeLists.txt
-elseif(LANGUAGE STREQUAL "en")
-  set(LANG "EN")
-  set(LANG_NAME "English")
-  set(LANG_ID "0409")  # 0x0409 = English (US)
-  set(CHARSET "04B0")
-  set(TTS_LANG "en_us")
-  set(TTS_VOICE "David")
-  target_compile_definitions(Dyscover PRIVATE __LANGUAGE_EN__)
-```
+1. Add language constants to `CMakeLists.txt` (LANGUAGE selector block).  
+2. In layout mode: create directories for each layout type needed.  
+3. Provide `layout.cpp` modules (see example above).  
+4. Place language & voice TTS data in each layout's `tts/` (or shared strategy—future enhancement).  
+5. Configure: `cmake -B build-new -DLANGUAGE=en_us .` → discovery includes new layouts.
+6. (Legacy fallback) If still using Keys.cpp: add preprocessor block & entries, update extraction script mapping.
 
-### Step 3: Update Extraction Script
-
-```cmake
-# In scripts/build-tools/extract-audio-resources.cmake
-# Add the new language to the supported list (around line 40)
-if(LANGUAGE STREQUAL "nl")
-  set(LANGUAGE_DEFINE "__LANGUAGE_NL__")
-elseif(LANGUAGE STREQUAL "nl_be")
-  set(LANGUAGE_DEFINE "__LANGUAGE_NL_BE__")
-elseif(LANGUAGE STREQUAL "en")
-  set(LANGUAGE_DEFINE "__LANGUAGE_EN__")
-else()
-  message(FATAL_ERROR "Unsupported language: ${LANGUAGE}")
-endif()
-```
-
-### Step 4: Update Multi-Language Build Script
-
+## Switching Modes
 ```bash
-# In scripts/build-all-languages.sh (line 8)
-SUPPORTED_LANGUAGES=("nl" "nl_be" "en")
+# Default (layout structure ON)
+cmake -B build .
+# Legacy manifest only
+cmake -B build-legacy -DUSE_LAYOUT_STRUCTURE=OFF .
 ```
 
-### Step 5: Add Audio Files
-
-Ensure all `.wav` files referenced in the English layouts exist in `res/data/`.
-
-### Step 6: Add TTS Files
-
-Place TTS files in `res/data/tts/data/`:
-- `en_us.db`, `en_us.fsa`, `en_us.fst`
-- `David.db`, `David.fon`, `David.udb`
-
-### Step 7: Test
-
+## Validation (Layout Mode)
 ```bash
-# Build English version
-cmake -DLANGUAGE=en -B build-en .
-cmake --build build-en
-
-# Verify resource extraction
-cat build-en/resource-manifest-en.txt
-
-# Verify audio files
-ls build-en/audio/
+cmake -B build -DLANGUAGE=nl_nl .
+cmake --build build
+./build/Dyscover --version
 ```
+Check compile warnings in generated layout modules (expected if some initializer fields are intentionally omitted). Ensure registration count matches expected number of layouts.
 
-## Building for Multiple Languages
-
-### Sequential Build
-
-```bash
-# Build all languages one at a time
-./scripts/build-all-languages.sh --sequential
-```
-
-### Parallel Build (Faster)
-
-```bash
-# Build all languages simultaneously
-./scripts/build-all-languages.sh
-```
-
-### Custom Build Options
-
-```bash
-# Build with full licensing
-./scripts/build-all-languages.sh --licensing full
-
-# Build with tests
-./scripts/build-all-languages.sh --tests ON
-```
-
-## Build System Integration
-
-### For Linux
-
-```bash
-# Configure for Dutch
-cmake -DLANGUAGE=nl -B build-nl .
-
-# Configure for Flemish
-cmake -DLANGUAGE=nl_be -B build-nl_be .
-
-# Build
-cmake --build build-nl --parallel
-cmake --build build-nl_be --parallel
-```
-
-### For Windows
-
-```powershell
-# Dutch build
-.\build-windows.ps1 -Language nl
-
-# Flemish build
-.\build-windows.ps1 -Language nl_be
-```
-
-## Validation
-
-### Manual Validation
-
-```bash
-# Verify builds are language-specific
-find build-nl/audio -name "*.wav" | wc -l
-find build-nl_be/audio -name "*.wav" | wc -l
-find res/data -name "*.wav" | wc -l
-
-# Compare lists
-comm -12 <(ls build-nl/audio | sort) <(ls build-nl_be/audio | sort)
-```
-
-### Automated Validation
-
-```bash
-# Run comprehensive validation suite
-./scripts/validate-resource-optimization.sh
-```
-
-This script tests:
-- **SC-001**: Dutch package size reduction ≥40%
-- **SC-002**: Flemish package size reduction ≥40%
-- **SC-003**: Builds complete successfully
-- **SC-004**: Validation completes within 10 seconds
-- **SC-006**: No cross-language contamination
-- **SC-007**: 100% error detection
-
-## CI/CD Integration
-
-GitHub Actions workflow is provided at `.github/workflows/multi-language-build.yml`:
-
-```yaml
-# Builds all languages in parallel
-# Verifies package independence
-# Uploads artifacts for each language
-```
+## Performance Notes
+| Stage | Legacy | Layout Mode | Delta |
+|-------|--------|-------------|-------|
+| Configure | ~2.3s | ~2.3–2.6s | +≤0.3s |
+| Build (clean) | baseline | +<10% | Within target |
+| Incremental | unchanged | unchanged | — |
 
 ## Troubleshooting
+| Symptom | Likely Cause | Action |
+|---------|--------------|--------|
+| Layout not discovered | Directory depth wrong or language code mismatch | Verify path: `res/layouts/<type>/<lang>/layout.cpp` |
+| Runtime missing layout | Registration static block omitted | Add static instance + lambda registration |
+| Duplicate audio copies | Shared file placed in multiple layout/audio dirs | Consider shared parent + symlink (future enhancement) |
+| Rollback needed | Unexpected regression post‑switchover | Reconfigure with `-DUSE_LAYOUT_STRUCTURE=OFF` |
 
-### Problem: "Language section not found"
-
-**Error**: `Language section '#if defined __LANGUAGE_XX__' not found in Keys.cpp`
-
-**Solution**: Ensure Keys.cpp has the correct preprocessor block:
-```cpp
-#if defined __LANGUAGE_NL__
-// or
-#elif defined __LANGUAGE_NL_BE__
-```
-
-### Problem: "Missing audio files"
-
-**Error**: `Missing audio files (N): file.wav`
-
-**Solutions**:
-1. Add the missing `.wav` file to `res/data/`
-2. Or remove the reference from Keys.cpp if it's not needed
-3. Check filename spelling in Keys.cpp (case-sensitive)
-
-### Problem: "Resource validation failed"
-
-**Solution**: Run CMake with verbose output:
-```bash
-cmake -DLANGUAGE=nl -B build-test . 2>&1 | grep -A 20 "Resource Validation"
-```
-
-### Problem: Build includes all files (no optimization)
-
-**Check**:
-1. Verify manifest file exists: `cat build-nl/resource-manifest-nl.txt`
-2. Check manifest file count: should be ~62 for Dutch, not 68
-3. Ensure you're building with the correct LANGUAGE setting
-
-## Performance
-
-- **Extraction Time**: <1 second (parsing Keys.cpp)
-- **Validation Time**: <1 second (checking file existence)
-- **Total Overhead**: <2 seconds added to CMake configuration
-
-## Key Files Reference
-
+## Key Files
 | File | Purpose |
 |------|---------|
-| `cmake/ResourceManifest.cmake` | CMake module providing `generate_resource_manifest()` |
-| `scripts/build-tools/extract-audio-resources.cmake` | Parses Keys.cpp, generates manifest |
-| `scripts/build-tools/validate-resources.cmake` | Validates resources exist |
-| `scripts/build-all-languages.sh` | Multi-language build automation |
-| `scripts/validate-resource-optimization.sh` | Tests success criteria |
-| `.github/workflows/multi-language-build.yml` | CI/CD workflow |
+| `cmake/LayoutDiscovery.cmake` | Discovery & validation functions |
+| `src/layouts/LayoutRegistry.*` | Central registry / active layout selection |
+| `scripts/migration/migrate-to-layouts.sh` | One‑time migration (audit trail) |
+| `res/layouts/*/*/layout.cpp` | Individual layout providers |
+| `CMakeLists.txt` | Feature flag & language selection |
 
-## Technical Details
+## Future (Phase 3 Cleanup Planned)
+Remove legacy manifest path & `src/Keys.cpp` once stable monitoring (Phase 7) completes and rollback risk is minimal.
 
-### Manifest File Format
-
-Simple text file, one filename per line:
-```
-a.wav
-b.wav
-c.wav
-...
-```
-
-### Extraction Algorithm
-
-1. Read Keys.cpp file content
-2. Find language section start: `#if defined __LANGUAGE_XX__` or `#elif defined __LANGUAGE_XX__`
-3. Find section end: next `#elif` or `#endif`
-4. Extract substring for that language
-5. Regex match all `"*.wav"` patterns
-6. Remove duplicates and sort
-7. Write to manifest file
-
-### Validation Algorithm
-
-1. Read manifest file (audio files)
-2. Check each file exists in `res/data/`
-3. Check TTS files exist in `res/data/tts/data/`
-4. Accumulate all errors (don't fail-fast)
-5. Report comprehensive error message with all missing files
-
-## Future Enhancements
-
-Potential improvements (currently out of scope):
-
-1. **Source Restructuring**: Split Keys.cpp into per-language files
-2. **Resource Organization**: Subdirectories for language-specific resources
-3. **Dynamic Loading**: Runtime language switching without rebuild
-4. **Audio Compression**: Use OGG instead of WAV for smaller files
-5. **Automatic Detection**: Infer required files from layout definitions
+## Accessibility & Inclusive Design
+Layout modules should preserve consistent naming and avoid ambiguous labels. Review added audio file names for clarity (avoid cryptic codes).  
+Generated code was produced with accessibility in mind; please manually test with assistive tools.
 
 ---
-
-**Questions?** See `specs/006-language-resource-optimization/spec.md` for full specification.
+Questions? See `specs/006-language-resource-optimization/spec.md` for original spec and `quickstart.md` for historical migration steps.
