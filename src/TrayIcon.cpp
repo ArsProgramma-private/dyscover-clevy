@@ -36,11 +36,25 @@ TrayIcon::~TrayIcon()
 
 void TrayIcon::UpdateIcon()
 {
+    // 3-state mapping: Active, Paused, No Keyboard (full license)
+    int iconIndex = 0; // Active by default
+    bool enabled = m_pConfig->GetEnabled();
 #ifdef __LICENSING_FULL__
-    int iconIndex = m_pApp->IsClevyKeyboardPresent() && m_pConfig->GetEnabled() ? 0 : 5;
+    bool kbPresent = m_pApp->IsClevyKeyboardPresent();
+    if (!enabled) {
+        iconIndex = 4; // Paused
+    } else if (!kbPresent) {
+        iconIndex = 5; // No Keyboard
+    } else {
+        iconIndex = 0; // Active
+    }
 #else
-    int iconIndex = m_pConfig->GetEnabled() ? 0 : 5;
+    iconIndex = enabled ? 0 : 4; // Active vs Paused
 #endif
+    // Guard against out-of-range index
+    if (iconIndex < 0 || iconIndex >= static_cast<int>(m_icons.size())) {
+        iconIndex = 0;
+    }
     SetIcon(m_icons[iconIndex], _("Clevy Dyscover"));
 }
 

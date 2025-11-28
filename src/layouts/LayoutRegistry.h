@@ -52,6 +52,14 @@ public:
      * @return Pointer to active layout provider
      */
     const ILayoutProvider* GetActiveLayout() const;
+
+    /**
+     * @brief Set active layout at runtime
+     * 
+     * If name is null or not registered, active override is cleared and
+     * GetActiveLayout() will fall back to compile-time/default logic.
+     */
+    void SetActiveLayout(const char* name);
     
 private:
     LayoutRegistry() = default;
@@ -60,6 +68,8 @@ private:
     
     // TODO: Implement layout storage (map of name -> provider)
     std::map<std::string, ILayoutProvider*> layouts_;
+    // Optional runtime override for active layout name
+    std::string activeLayoutName_;
 };
 
 } // namespace Dyscover

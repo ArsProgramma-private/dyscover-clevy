@@ -10,6 +10,7 @@
 #include "PreferencesDialog.h"
 #include "ResourceLoader.h"
 #include "VersionInfo.h"
+#include "layouts/LayoutRegistry.h"
 
 enum
 {
@@ -159,15 +160,28 @@ void PreferencesDialog::OnKeyboardMethodChanged(wxCommandEvent&)
     if (m_pKeyboardMethodDyscover->GetValue())
     {
         m_pConfig->SetLayout(Layout::Classic);
+    // Update active layout immediately
+#if defined(__LANGUAGE_NL__)
+    Dyscover::LayoutRegistry::Instance().SetActiveLayout("dutchclassic");
+#elif defined(__LANGUAGE_NL_BE__)
+    Dyscover::LayoutRegistry::Instance().SetActiveLayout("flemishclassic");
+#endif
     }
     else if (m_pKeyboardMethodDefault->GetValue())
     {
         m_pConfig->SetLayout(Layout::Default);
+    // Update active layout immediately
+#if defined(__LANGUAGE_NL__)
+    Dyscover::LayoutRegistry::Instance().SetActiveLayout("dutchdefault");
+#elif defined(__LANGUAGE_NL_BE__)
+    Dyscover::LayoutRegistry::Instance().SetActiveLayout("flemishdefault");
+#endif
     }
 #ifdef __LANGUAGE_NL__
     else
     {
         m_pConfig->SetLayout(Layout::KWeC);
+    Dyscover::LayoutRegistry::Instance().SetActiveLayout("dutchkwec");
     }
 #endif
 }

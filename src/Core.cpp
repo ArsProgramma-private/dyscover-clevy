@@ -192,14 +192,23 @@ bool Core::OnKeyEvent(Key key, KeyEventType eventType, bool capsLock, bool shift
     // Speech handling
     if (eventType == KeyEventType::KeyUp)
     {
-        if (key == Key::Tab || key == Key::Space || key == Key::Enter)
+        if (key == Key::Space)
         {
             if (!m_wordSpeechBuffer.empty() && m_pConfig->GetWords())
             {
                 m_pSpeech->SetSpeed(static_cast<float>(m_pConfig->GetSpeed()));
                 m_pSpeech->Speak(m_wordSpeechBuffer);
             }
-
+            m_wordSpeechBuffer.clear();
+            m_sentenceSpeechBuffer.push_back(' ');
+        }
+        else if (key == Key::Tab || key == Key::Enter)
+        {
+            if (!m_wordSpeechBuffer.empty() && m_pConfig->GetWords())
+            {
+                m_pSpeech->SetSpeed(static_cast<float>(m_pConfig->GetSpeed()));
+                m_pSpeech->Speak(m_wordSpeechBuffer);
+            }
             m_wordSpeechBuffer.clear();
             m_sentenceSpeechBuffer.push_back(' ');
         }

@@ -53,6 +53,12 @@ const ILayoutProvider* LayoutRegistry::GetLayout(const char* name) const {
 }
 
 const ILayoutProvider* LayoutRegistry::GetActiveLayout() const {
+    // If a runtime override is set and registered, use it first
+    if (!activeLayoutName_.empty()) {
+        const ILayoutProvider* layout = GetLayout(activeLayoutName_.c_str());
+        if (layout) return layout;
+    }
+
     // Determine active layout based on compile-time preprocessor flags
     // Priority order:
     // 1. Specific layout type + language (e.g., __LAYOUT_DUTCH_CLASSIC__)
@@ -90,6 +96,19 @@ const ILayoutProvider* LayoutRegistry::GetActiveLayout() const {
         }
         return nullptr;
     #endif
+}
+
+void LayoutRegistry::SetActiveLayout(const char* name) {
+    if (!name || *name == '\0') {
+        activeLayoutName_.clear();
+        return;
+    }
+    // Only store when registered; otherwise clear to use fallback
+    if (GetLayout(name)) {
+        activeLayoutName_.assign(name);
+    } else {
+        activeLayoutName_.clear();
+    }
 }
 
 } // namespace Dyscover

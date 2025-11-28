@@ -11,6 +11,7 @@
 #include "PreferencesDialog.h"
 #include "ResourceLoader.h"
 #include "TrayIcon.h"
+#include "layouts/LayoutRegistry.h"
 
 bool App::OnInit()
 {
@@ -43,6 +44,25 @@ bool App::OnInit()
     }
 
     m_pConfig = new Config();
+
+        // Restore runtime-selected layout at startup based on persisted config
+        // Default to language-specific classic if unknown.
+        {
+        Layout layout = m_pConfig->GetLayout();
+    #if defined(__LANGUAGE_NL__)
+        const char* name = (layout == Layout::Default) ? "dutchdefault"
+                     : (layout == Layout::Classic) ? "dutchclassic"
+    #ifdef __LANGUAGE_NL__
+                     : (layout == Layout::KWeC) ? "dutchkwec"
+    #endif
+                     : "dutchclassic";
+        Dyscover::LayoutRegistry::Instance().SetActiveLayout(name);
+    #elif defined(__LANGUAGE_NL_BE__)
+        const char* name = (layout == Layout::Default) ? "flemishdefault"
+                     : /* Layout::Classic */ "flemishclassic";
+        Dyscover::LayoutRegistry::Instance().SetActiveLayout(name);
+    #endif
+        }
 
 #ifdef __LICENSING_DEMO__
     m_pDemoLicensing = new DemoLicensing(m_pConfig, this);
