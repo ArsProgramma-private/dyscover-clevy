@@ -22,10 +22,12 @@ On Windows (PowerShell):
 
 ## Validate Behaviors
 
-1) Tray Icon
+1) Tray Icon (Three-State Mapping)
+- **Icon states**: Icon index 0 (Active), 4 (Paused), 5 (No Keyboard in full builds).
 - Start app; right-click tray; verify Enabled/Letters/Words/Sentences/Selection/Settings/Manual/Exit.
-- Toggle Enabled and observe icon color change.
-- (Full build) Disconnect keyboard; observe No Keyboard icon.
+- Toggle Enabled and observe icon change (Active ↔ Paused).
+- (Full build) Disconnect keyboard; observe No Keyboard icon (index 5).
+- **Asset order**: `LoadDyscoverIcons()` loads Icon0..Icon6; mapping selects indices 0, 4, 5 per state.
 
 2) Method Switching
 - Open Settings; switch between Clevy Dyscover / Clevy Keyboard / KWeC.

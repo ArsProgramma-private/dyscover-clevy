@@ -355,9 +355,18 @@ else()
 endif()
 
 # Languages
-set(LANGUAGE "nl" CACHE STRING "Specifies which language to use")
-set_property(CACHE LANGUAGE PROPERTY STRINGS nl nl_be)
-message(STATUS "Language is set to ${LANGUAGE}.")
+set(LANGUAGE "nl" CACHE STRING "Specifies which language to use (supports aliases: nl, nl_nl, nl_be)")
+set_property(CACHE LANGUAGE PROPERTY STRINGS nl nl_nl nl_be)
+
+# Normalize LANGUAGE to canonical base codes used in build logic while preserving original
+set(ORIGINAL_LANGUAGE "${LANGUAGE}")
+if(LANGUAGE STREQUAL "nl_nl")
+  # Treat nl_nl as alias of nl for existing branching; keep ORIGINAL_LANGUAGE for discovery
+  set(LANGUAGE "nl")
+endif()
+
+message(STATUS "Language (raw) = ${ORIGINAL_LANGUAGE}; canonical = ${LANGUAGE}")
+
 if(LANGUAGE STREQUAL "nl")
   set(LANG "NL")
   set(LANG_NAME "Dutch")
@@ -375,7 +384,7 @@ elseif(LANGUAGE STREQUAL "nl_be")
   set(TTS_VOICE "Veerle")
   target_compile_definitions(Dyscover PRIVATE __LANGUAGE_NL_BE__)
 else()
-  message(FATAL_ERROR "Unsupported language.")
+  message(FATAL_ERROR "Unsupported language (raw='${ORIGINAL_LANGUAGE}')")
 endif()
 
 # Translations
@@ -472,6 +481,14 @@ if(BUILD_TESTS)
     target_sources(KeyboardHandlerCapsLockTest PRIVATE src/platform/KeyboardHandler.cpp)
     add_test(NAME unit-KeyboardHandlerCapsLock COMMAND KeyboardHandlerCapsLockTest)
   endif()
+  # Unit test: LayoutSwitchingTest (runtime layout override affects TranslateKey)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/LayoutSwitchingTest.cpp")
+    add_executable(LayoutSwitchingTest tests/unit/LayoutSwitchingTest.cpp)
+    target_include_directories(LayoutSwitchingTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    # Link core sources required by the test
+    target_sources(LayoutSwitchingTest PRIVATE src/Keys.cpp src/layouts/LayoutRegistry.cpp)
+    add_test(NAME unit-LayoutSwitching COMMAND LayoutSwitchingTest)
+  endif()
   # Unit test skeleton: KeyboardHandlerPermissionTest (T042)
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/KeyboardHandlerPermissionTest.cpp")
     add_executable(KeyboardHandlerPermissionTest tests/unit/KeyboardHandlerPermissionTest.cpp)
@@ -538,6 +555,27 @@ if(BUILD_TESTS)
     target_sources(ResourceLocatorPathsTest PRIVATE src/platform/ResourceLocator.cpp)
     target_link_libraries(ResourceLocatorPathsTest PRIVATE ${wxWidgets_LIBRARIES})
     add_test(NAME unit-ResourceLocatorPaths COMMAND ResourceLocatorPathsTest)
+  endif()
+  # Unit test: TrayIconAssetsTest validates icon indices (0,4,5)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/TrayIconAssetsTest.cpp")
+    add_executable(TrayIconAssetsTest tests/unit/TrayIconAssetsTest.cpp)
+    target_include_directories(TrayIconAssetsTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_sources(TrayIconAssetsTest PRIVATE src/ResourceLoader.cpp src/platform/ResourceLocator.cpp)
+    target_link_libraries(TrayIconAssetsTest PRIVATE ${wxWidgets_LIBRARIES})
+    add_test(NAME unit-TrayIconAssets COMMAND TrayIconAssetsTest)
+  endif()
+  # Unit test: TrayIconMappingTest validates state->index selection logic
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/TrayIconMappingTest.cpp")
+    add_executable(TrayIconMappingTest tests/unit/TrayIconMappingTest.cpp)
+    target_include_directories(TrayIconMappingTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    add_test(NAME unit-TrayIconMapping COMMAND TrayIconMappingTest)
+  endif()
+  # Unit test: PronunciationModifierTest validates Alt key changes pronunciation
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/PronunciationModifierTest.cpp")
+    add_executable(PronunciationModifierTest tests/unit/PronunciationModifierTest.cpp)
+    target_include_directories(PronunciationModifierTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_sources(PronunciationModifierTest PRIVATE src/Keys.cpp src/layouts/LayoutRegistry.cpp)
+    add_test(NAME unit-PronunciationModifier COMMAND PronunciationModifierTest)
   endif()
   # Unit test skeleton: DeviceHotplugCallbackTest
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/DeviceHotplugCallbackTest.cpp")
@@ -666,6 +704,20 @@ if(LAYOUT_SOURCES)
   list(LENGTH ALL_AUDIO_FILES AUDIO_COUNT)
   list(LENGTH ALL_TTS_FILES TTS_COUNT)
   message(STATUS "Layout-based resources: ${AUDIO_COUNT} audio files, ${TTS_COUNT} TTS files")
+
+  # Warn if no .opu (voice audio metadata) files are present
+  set(OPU_FOUND FALSE)
+  foreach(TTS_FILE ${ALL_TTS_FILES})
+    if(TTS_FILE MATCHES "\\.opu$")
+      set(OPU_FOUND TRUE)
+      break()
+    endif()
+  endforeach()
+  if(NOT OPU_FOUND)
+    message(WARNING "No .opu voice metadata files found in collected TTS resources.\n"
+                    "  Voice initialization may fail at runtime with '-202 Cannot load voice audio metadata'.\n"
+                    "  Ensure voice .opu files are available under your layout tts/ folder so they copy to tts/data.")
+  endif()
   
   # Copy audio files to build directory
   add_custom_command(

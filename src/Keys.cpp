@@ -5,25 +5,11 @@
 #include "Keys.h"
 #include "layouts/LayoutRegistry.h"
 #include "layouts/LayoutLoader.h"
+#include "layouts/LayoutTypes.h"
 #include <vector>
 
-// Type definitions for layout entries (same as in layout files)
-enum class CapsLock {
-    Ignore,
-    Active,
-    Inactive,
-};
-
-struct KeyTranslationEntry {
-    Key input;
-    bool shift;
-    bool ctrl;
-    bool alt;
-    std::vector<KeyStroke> output;
-    std::string sound;
-    bool speak_sentence = false;
-    CapsLock capsLock = CapsLock::Ignore;
-};
+using Dyscover::KeyTranslationEntry;
+using Dyscover::CapsLock;
 
 // Helper function to find translation in layout entries
 static KeyTranslation FindTranslation(const std::vector<KeyTranslationEntry>& entries, Key key, bool caps, bool shift, bool ctrl, bool alt)

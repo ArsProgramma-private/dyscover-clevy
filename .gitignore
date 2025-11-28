@@ -9,6 +9,7 @@
 .github/prompts/
 .github/context/
 .github/agents/
+agent-os/
 journals/
 
 # === Build Directories & Artifacts (CMake) ===

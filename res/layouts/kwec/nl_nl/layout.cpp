@@ -5,24 +5,10 @@
 #include "Keys.h"
 #include "layouts/LayoutLoader.h"
 #include "layouts/LayoutRegistry.h"
+#include "layouts/LayoutTypes.h"
 
-// Type definitions (copied from Keys.cpp)
-enum class CapsLock {
-    Ignore,
-    Active,
-    Inactive,
-};
-
-struct KeyTranslationEntry {
-    Key input;
-    bool shift;
-    bool ctrl;
-    bool alt;
-    std::vector<KeyStroke> output;
-    std::string sound;
-    bool speak_sentence = false;
-    CapsLock capsLock = CapsLock::Ignore;
-};
+using Dyscover::KeyTranslationEntry;
+using Dyscover::CapsLock;
 
 namespace {
 

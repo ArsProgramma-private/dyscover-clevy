@@ -10,8 +10,7 @@
 #include <map>
 #include <string>
 
-// Forward declaration (full definition in Keys.h)
-struct KeyTranslationEntry;
+#include "LayoutTypes.h"
 
 namespace Dyscover {
 

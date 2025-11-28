@@ -37,10 +37,15 @@ Core::Core(App* pApp, Config* pConfig, Device* pDevice [[maybe_unused]])
     m_pSoundPlayer = new SoundPlayer();
     m_pSpeech = new Speech();
     try {
-        m_pSpeech->Init(GetTTSDataPath(), TTS_LANG, TTS_VOICE);
-        m_pSpeech->SetVolume(RSTTS_VOLUME_MAX);
+        bool ttsOk = m_pSpeech->Init(GetTTSDataPath(), TTS_LANG, TTS_VOICE);
+        if (ttsOk) {
+            m_pSpeech->SetVolume(RSTTS_VOLUME_MAX);
+            wxLogInfo(LOG_TAG_SPEECH "TTS engine initialized successfully");
+        } else {
+            wxLogWarning(LOG_TAG_SPEECH "TTS engine initialization failed");
+        }
     } catch (...) {
-        wxLogWarning(LOG_TAG_SPEECH "Failed to initialize speech engine");
+        wxLogWarning(LOG_TAG_SPEECH "Failed to initialize speech engine (exception)");
     }
 
     // Device presence will be set by the detector's initial callback
@@ -127,9 +132,19 @@ bool Core::OnKeyEvent(Key key, KeyEventType eventType, bool capsLock, bool shift
 #ifdef __LICENSING_FULL__
     if (!m_bKeyboardConnected)  return false;
 #endif
+    // Entry debug: log raw event before any gating
+    wxLogInfo(LOG_TAG_CORE "Evt key=%d type=%d enabled=%d words=%d sentences=%d selection=%d wordLen=%zu sentLen=%zu", 
+              static_cast<int>(key), static_cast<int>(eventType), m_pConfig->GetEnabled(), m_pConfig->GetWords(), m_pConfig->GetSentences(), m_pConfig->GetSelection(), m_wordSpeechBuffer.length(), m_sentenceSpeechBuffer.length());
 
-    if (!m_pConfig->GetEnabled())  return false;
+    if (!m_pConfig->GetEnabled()) {
+        wxLogInfo(LOG_TAG_CORE "Evt suppressed: software disabled (Enabled=0)");
+        return false;
+    }
 
+    // Speaker key (WinCmd) triggers Selection Read-Out when enabled:
+    // - Sends Ctrl+C to copy current selection
+    // - Waits briefly for clipboard to populate
+    // - Reads clipboard text via TTS at configured speed
     if (key == Key::WinCmd && eventType == KeyEventType::KeyDown && m_pConfig->GetSelection())
     {
         // Send Ctrl+C
@@ -187,6 +202,29 @@ bool Core::OnKeyEvent(Key key, KeyEventType eventType, bool capsLock, bool shift
             // PlaySoundFile now handles crossfading automatically
             m_pSoundPlayer->PlaySoundFile(translation.sound);
         }
+#ifdef __PLATFORM_WINDOWS__
+        // Windows-specific: also accumulate printable characters on KeyDown to ensure
+        // word/sentence buffers fill even if KeyUp is not reliably processed.
+        for (KeyStroke ks : translation.keystrokes)
+        {
+            std::string chars;
+            if (m_pPlatformKeyboardHandler)
+            {
+                KeyModifiers mods; mods.shift = ks.shift; mods.ctrl = ks.ctrl; mods.alt = ks.alt;
+                chars = m_pPlatformKeyboardHandler->translate(ks.key, mods);
+            }
+            if (chars.empty())
+            {
+                chars = m_pKeyboard->TranslateKeyStroke(ks.key, ks.shift, ks.ctrl);
+            }
+            if (!chars.empty()) {
+                m_wordSpeechBuffer.append(chars);
+                m_sentenceSpeechBuffer.append(chars);
+                wxLogInfo(LOG_TAG_CORE "[Win] Accumulated(KeyDown): '%s' -> wordBuf='%s' (len=%zu)",
+                          chars.c_str(), m_wordSpeechBuffer.c_str(), m_wordSpeechBuffer.length());
+            }
+        }
+#endif
     }
 
     // Speech handling
@@ -196,6 +234,8 @@ bool Core::OnKeyEvent(Key key, KeyEventType eventType, bool capsLock, bool shift
         {
             if (!m_wordSpeechBuffer.empty() && m_pConfig->GetWords())
             {
+                wxLogInfo(LOG_TAG_CORE "Speaking word (Space): '%s' (len=%zu, Words=%d)",
+                          m_wordSpeechBuffer.c_str(), m_wordSpeechBuffer.length(), m_pConfig->GetWords());
                 m_pSpeech->SetSpeed(static_cast<float>(m_pConfig->GetSpeed()));
                 m_pSpeech->Speak(m_wordSpeechBuffer);
             }
@@ -206,6 +246,8 @@ bool Core::OnKeyEvent(Key key, KeyEventType eventType, bool capsLock, bool shift
         {
             if (!m_wordSpeechBuffer.empty() && m_pConfig->GetWords())
             {
+                wxLogInfo(LOG_TAG_CORE "Speaking word (Tab/Enter): '%s' (len=%zu, Words=%d)",
+                          m_wordSpeechBuffer.c_str(), m_wordSpeechBuffer.length(), m_pConfig->GetWords());
                 m_pSpeech->SetSpeed(static_cast<float>(m_pConfig->GetSpeed()));
                 m_pSpeech->Speak(m_wordSpeechBuffer);
             }
@@ -223,6 +265,8 @@ bool Core::OnKeyEvent(Key key, KeyEventType eventType, bool capsLock, bool shift
 
             if (!m_sentenceSpeechBuffer.empty() && m_pConfig->GetSentences())
             {
+                wxLogInfo(LOG_TAG_CORE "Speaking sentence: '%s' (len=%zu, Sentences=%d)",
+                          m_sentenceSpeechBuffer.c_str(), m_sentenceSpeechBuffer.length(), m_pConfig->GetSentences());
                 m_pSpeech->Speak(m_sentenceSpeechBuffer);
             }
 
@@ -231,6 +275,7 @@ bool Core::OnKeyEvent(Key key, KeyEventType eventType, bool capsLock, bool shift
         }
         else if (key == Key::Esc)
         {
+            wxLogInfo(LOG_TAG_CORE "Esc: Stop requested (wordBufLen=%zu sentBufLen=%zu)", m_wordSpeechBuffer.length(), m_sentenceSpeechBuffer.length());
             m_pSpeech->Stop();
         }
         else if (key == Key::Backspace)
@@ -238,15 +283,19 @@ bool Core::OnKeyEvent(Key key, KeyEventType eventType, bool capsLock, bool shift
             if (!m_wordSpeechBuffer.empty())
             {
                 m_wordSpeechBuffer.pop_back();
+                wxLogInfo(LOG_TAG_CORE "Backspace: wordBuf='%s'", m_wordSpeechBuffer.c_str());
             }
 
             if (!m_sentenceSpeechBuffer.empty())
             {
                 m_sentenceSpeechBuffer.pop_back();
+                wxLogInfo(LOG_TAG_CORE "Backspace: sentenceBuf len now %zu", m_sentenceSpeechBuffer.length());
             }
         }
         else
         {
+#ifndef __PLATFORM_WINDOWS__
+            // Non-Windows: accumulate on KeyUp (original behavior)
             for (KeyStroke ks : translation.keystrokes)
             {
                 std::string chars;
@@ -261,7 +310,13 @@ bool Core::OnKeyEvent(Key key, KeyEventType eventType, bool capsLock, bool shift
                 }
                 m_wordSpeechBuffer.append(chars);
                 m_sentenceSpeechBuffer.append(chars);
+                wxLogInfo(LOG_TAG_CORE "Accumulated: '%s' -> wordBuf='%s' (len=%zu)",
+                          chars.c_str(), m_wordSpeechBuffer.c_str(), m_wordSpeechBuffer.length());
             }
+#else
+            // Windows: accumulation happens on KeyDown (see above), so KeyUp is a no-op for printable keys
+            wxLogInfo(LOG_TAG_CORE "KeyUp printable: no-op (already accumulated on KeyDown)");
+#endif
         }
     }
 

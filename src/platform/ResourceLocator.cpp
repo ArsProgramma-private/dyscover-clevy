@@ -22,7 +22,7 @@ namespace {
         }
         std::string splashBitmap() const override { return m_base + "/Splash.bmp"; }
         std::string audioDir() const override { return m_base + "/audio"; }
-        std::string ttsDir() const override { return m_base + "/tts/data"; }
+        std::string ttsDir() const override { return m_base + "/tts"; }
         std::string translationsDir() const override { return m_base + "/lang/nl"; }
     private:
         std::string m_base;

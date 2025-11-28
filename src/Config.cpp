@@ -50,6 +50,9 @@ Config::Config()
 
 Config::~Config()
 {
+    if (m_pConfig) {
+        m_pConfig->Flush();  // Ensure all pending writes are persisted
+    }
     delete m_pConfig;
 }
 
@@ -61,6 +64,7 @@ Layout Config::GetLayout()
 void Config::SetLayout(Layout value)
 {
     m_pConfig->Write(kLayoutKey, value);
+    m_pConfig->Flush();
 }
 
 bool Config::GetEnabled()
@@ -71,6 +75,7 @@ bool Config::GetEnabled()
 void Config::SetEnabled(bool value)
 {
     m_pConfig->Write(kEnabledKey, value);
+    m_pConfig->Flush();
 }
 
 bool Config::GetAutostart()
@@ -106,6 +111,7 @@ bool Config::GetLetters()
 void Config::SetLetters(bool value)
 {
     m_pConfig->Write(kLettersKey, value);
+    m_pConfig->Flush();
 }
 
 bool Config::GetWords()
@@ -116,6 +122,7 @@ bool Config::GetWords()
 void Config::SetWords(bool value)
 {
     m_pConfig->Write(kWordsKey, value);
+    m_pConfig->Flush();
 }
 
 bool Config::GetSentences()
@@ -126,6 +133,7 @@ bool Config::GetSentences()
 void Config::SetSentences(bool value)
 {
     m_pConfig->Write(kSentencesKey, value);
+    m_pConfig->Flush();
 }
 
 bool Config::GetSelection()
@@ -136,6 +144,7 @@ bool Config::GetSelection()
 void Config::SetSelection(bool value)
 {
     m_pConfig->Write(kSelectionKey, value);
+    m_pConfig->Flush();
 }
 
 long Config::GetSpeed()
@@ -146,6 +155,7 @@ long Config::GetSpeed()
 void Config::SetSpeed(long value)
 {
     m_pConfig->Write(kSpeedKey, value);
+    m_pConfig->Flush();
 }
 
 wxDateTime Config::GetDemoStarted()
@@ -156,6 +166,7 @@ wxDateTime Config::GetDemoStarted()
 void Config::SetDemoStarted(wxDateTime value)
 {
     m_pConfig->Write(kDemoStartedKey, value);
+    m_pConfig->Flush();
 }
 
 bool Config::GetDemoExpired()
@@ -166,6 +177,7 @@ bool Config::GetDemoExpired()
 void Config::SetDemoExpired(bool value)
 {
     m_pConfig->Write(kDemoExpiredKey, value);
+    m_pConfig->Flush();
 }
 
 bool wxFromString(const wxString& string, wxDateTime* pDateTime)

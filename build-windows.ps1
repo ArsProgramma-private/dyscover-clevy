@@ -37,13 +37,15 @@
   Requires: Visual Studio 2022 (for MSVC generator) or appropriate compiler for MinGW/Ninja.
 #>
 param(
-  [ValidateSet('Debug','Release')] 
-  [string]$Config = 'Release',
+    [ValidateSet('Debug','Release')] 
+    [string]$Config = 'Release',
   
-  [ValidateSet('x64')] 
-  [string]$Arch = 'x64',
+    [ValidateSet('x64')] 
+    [string]$Arch = 'x64',
   
-  [string]$Language = 'nl',
+    # Default language updated to full locale code to match layout directories (res/layouts/*/nl_nl)
+    # Previous default 'nl' caused zero layouts discovered, preventing TTS resource copy and failing Speech init.
+    [string]$Language = 'nl_nl',
   
   [ValidateSet('demo','full')] 
   #[string]$Licensing = 'demo',
